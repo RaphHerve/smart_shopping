@@ -16,3 +16,9 @@ Assistant intelligent pour optimiser vos courses et détecter les erreurs de pri
 ```bash
 # Installation automatique
 curl -sSL https://raw.githubusercontent.com/RaphHerve/smart_shopping/main/install.sh | bash
+🌐 Accès
+
+Local : http://localhost
+Réseau local : http://IP-DE-VOTRE-PI
+
+Développé avec ❤️ pour optimiser vos courses !
