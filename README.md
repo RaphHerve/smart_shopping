@@ -19,6 +19,6 @@ curl -sSL https://raw.githubusercontent.com/RaphHerve/smart_shopping/main/instal
 🌐 Accès
 
 Local : http://localhost
-Réseau local : http://IP-DE-VOTRE-PI
+Réseau local : http://192.168.1.185
 
 Développé avec ❤️ pour optimiser vos courses !
