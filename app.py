@@ -89,6 +89,38 @@ def update_shopping_item(item_id):
     
     return jsonify({'success': True})
 
+@app.route('/api/shopping-list/<int:item_id>/edit', methods=['PUT'])
+def edit_shopping_item(item_id):
+    """Modifie le nom et/ou la catégorie d'un article"""
+    data = request.get_json()
+    name = data.get('name')
+    category = data.get('category')
+    
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    
+    # Construire la requête dynamiquement selon les champs fournis
+    updates = []
+    params = []
+    
+    if name:
+        updates.append('name = ?')
+        params.append(name)
+    
+    if category:
+        updates.append('category = ?')
+        params.append(category)
+    
+    if updates:
+        query = f'UPDATE shopping_list SET {", ".join(updates)} WHERE id = ?'
+        params.append(item_id)
+        cursor.execute(query, params)
+        conn.commit()
+    
+    conn.close()
+    
+    return jsonify({'success': True})
+
 @app.route('/api/shopping-list/<int:item_id>', methods=['DELETE'])
 def delete_shopping_item(item_id):
     """Supprime un article"""
@@ -99,6 +131,24 @@ def delete_shopping_item(item_id):
     conn.close()
     
     return jsonify({'success': True})
+
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    """Récupère la liste des catégories disponibles"""
+    categories = [
+        'Fruits & Légumes',
+        'Produits frais',
+        'Boulangerie',
+        'Épicerie',
+        'Fromage',
+        'Viande & Poisson',
+        'Surgelés',
+        'Boissons',
+        'Hygiène & Beauté',
+        'Entretien',
+        'Divers'
+    ]
+    return jsonify(categories)
 
 @app.route('/api/frequent-items', methods=['GET'])
 def get_frequent_items():
@@ -111,7 +161,11 @@ def get_frequent_items():
         {'name': 'Bananes', 'category': 'Fruits & Légumes'},
         {'name': 'Tomates', 'category': 'Fruits & Légumes'},
         {'name': 'Pâtes', 'category': 'Épicerie'},
-        {'name': 'Riz', 'category': 'Épicerie'}
+        {'name': 'Riz', 'category': 'Épicerie'},
+        {'name': 'Mozzarella', 'category': 'Fromage'},
+        {'name': 'Emmental', 'category': 'Fromage'},
+        {'name': 'Camembert', 'category': 'Fromage'},
+        {'name': 'Gruyère', 'category': 'Fromage'}
     ]
     
     return jsonify(frequent_items)
