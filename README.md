@@ -266,4 +266,269 @@ tail -f /opt/smart-shopping/logs/backup.log
 
 ### Sauvegarde manuelle
 ```bash
-# Sauveg
+# Sauvegarde complète
+/opt/smart-shopping/backup.sh
+
+# Sauvegarde base de données uniquement
+sqlite3 /opt/smart-shopping/smart_shopping.db ".backup backup_$(date +%Y%m%d).db"
+
+# Sauvegarde configuration
+tar -czf config_backup.tar.gz /opt/smart-shopping/.env /opt/smart-shopping/requirements.txt
+```
+
+### Restauration
+```bash
+# Arrêter l'application
+sudo systemctl stop smart-shopping
+
+# Restaurer la base de données
+sqlite3 /opt/smart-shopping/smart_shopping.db ".restore /path/to/backup.db"
+
+# Redémarrer l'application
+sudo systemctl start smart-shopping
+```
+
+## 🔧 Maintenance
+
+### Commandes utiles
+
+```bash
+# Statut des services
+sudo systemctl status smart-shopping nginx
+
+# Redémarrage
+sudo systemctl restart smart-shopping
+
+# Mise à jour des dépendances
+cd /opt/smart-shopping
+source venv/bin/activate
+pip install --upgrade -r requirements.txt
+sudo systemctl restart smart-shopping
+
+# Nettoyage des logs
+sudo journalctl --vacuum-time=30d
+
+# Vérification de l'espace disque
+df -h /opt/smart-shopping
+```
+
+### Mise à jour de l'application
+
+```bash
+# Télécharger la dernière version
+cd /opt/smart-shopping
+git pull origin main
+
+# Mettre à jour les dépendances
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Redémarrer les services
+sudo systemctl restart smart-shopping nginx
+```
+
+## 🐛 Dépannage
+
+### Problèmes courants
+
+#### ❌ L'application ne démarre pas
+```bash
+# Vérifier les logs
+sudo journalctl -u smart-shopping -n 50
+
+# Vérifier la configuration
+cd /opt/smart-shopping
+source venv/bin/activate
+python -c "from app import app; print('Configuration OK')"
+
+# Vérifier les permissions
+ls -la /opt/smart-shopping/
+```
+
+#### ❌ Les emails ne fonctionnent pas
+```bash
+# Tester la configuration email
+curl -X POST http://localhost/api/send-test-email
+
+# Vérifier les variables d'environnement
+grep GMAIL /opt/smart-shopping/.env
+
+# Logs d'erreur email
+sudo journalctl -u smart-shopping | grep -i email
+```
+
+#### ❌ Nginx retourne une erreur 502
+```bash
+# Vérifier que l'app Flask fonctionne
+curl http://127.0.0.1:5000
+
+# Vérifier la configuration Nginx
+sudo nginx -t
+sudo systemctl status nginx
+
+# Redémarrer Nginx
+sudo systemctl restart nginx
+```
+
+#### ❌ Base de données corrompue
+```bash
+# Vérifier l'intégrité
+sqlite3 /opt/smart-shopping/smart_shopping.db "PRAGMA integrity_check;"
+
+# Restaurer depuis une sauvegarde
+cp /opt/smart-shopping/backups/smart_shopping_YYYYMMDD.db /opt/smart-shopping/smart_shopping.db
+sudo systemctl restart smart-shopping
+```
+
+### Diagnostics avancés
+
+```bash
+# Script de diagnostic complet
+cat > diagnostic.sh << 'EOF'
+#!/bin/bash
+echo "=== Diagnostic Smart Shopping ==="
+echo "Date: $(date)"
+echo ""
+
+echo "1. Services:"
+systemctl is-active smart-shopping nginx
+echo ""
+
+echo "2. Ports:"
+netstat -tlnp | grep -E ':80|:5000'
+echo ""
+
+echo "3. Espace disque:"
+df -h /opt/smart-shopping
+echo ""
+
+echo "4. Processus:"
+ps aux | grep -E 'gunicorn|nginx' | head -5
+echo ""
+
+echo "5. Dernières erreurs:"
+journalctl -u smart-shopping --since "1 hour ago" | grep -i error | tail -5
+echo ""
+
+echo "6. Base de données:"
+ls -lh /opt/smart-shopping/smart_shopping.db
+echo ""
+
+echo "7. Configuration réseau:"
+ip addr show | grep inet
+EOF
+
+chmod +x diagnostic.sh
+./diagnostic.sh
+```
+
+## 📈 Performance
+
+### Optimisations implémentées
+
+- **🔄 Pool de connexions** pour la base de données
+- **📦 Compression Gzip** pour les ressources statiques
+- **⚡ Cache navigateur** pour les assets CSS/JS
+- **🎯 Requêtes optimisées** avec index SQLite
+- **🚀 Workers Gunicorn** pour la parallélisation
+
+### Monitoring des performances
+
+```bash
+# Utilisation CPU/Mémoire
+htop
+# ou
+ps aux | grep gunicorn
+
+# Taille de la base de données
+sqlite3 /opt/smart-shopping/smart_shopping.db ".dbinfo"
+
+# Temps de réponse
+curl -w "@curl-format.txt" -o /dev/null -s http://localhost/api/shopping-list
+```
+
+## 🌟 Fonctionnalités futures
+
+### Roadmap v2.1
+- [ ] 📱 **Application mobile** (React Native)
+- [ ] 🔗 **API publique** avec authentification
+- [ ] 🛒 **Intégration caddies connectés**
+- [ ] 🏪 **Géolocalisation** des magasins
+- [ ] 💳 **Suivi des dépenses** et budgets
+
+### Roadmap v2.2
+- [ ] 🤖 **Assistant vocal** (Alexa/Google)
+- [ ] 📊 **Dashboard analytics** avancé
+- [ ] 🔄 **Synchronisation multi-utilisateurs**
+- [ ] 🎯 **IA prédictive** pour les courses
+- [ ] 🌍 **Support multi-langues**
+
+## 🤝 Contribution
+
+### Comment contribuer
+
+1. **Fork** le projet
+2. **Créer** une branche feature (`git checkout -b feature/AmazingFeature`)
+3. **Commit** vos changements (`git commit -m 'Add AmazingFeature'`)
+4. **Push** vers la branche (`git push origin feature/AmazingFeature`)
+5. **Ouvrir** une Pull Request
+
+### Guidelines
+
+- 📝 Suivre les conventions de code Python (PEP 8)
+- ✅ Ajouter des tests pour les nouvelles fonctionnalités
+- 📚 Documenter les changements dans le README
+- 🔄 Tester sur Raspberry Pi avant de soumettre
+
+## 📄 Licence
+
+Distribué sous licence MIT. Voir `LICENSE` pour plus d'informations.
+
+## 👨‍💻 Auteur
+
+**Raphaël Herve** - [@RaphHerve](https://github.com/RaphHerve)
+
+- 📧 Email: rapherv@gmail.com
+- 🐙 GitHub: [RaphHerve/smart_shopping](https://github.com/RaphHerve/smart_shopping)
+
+## 🙏 Remerciements
+
+- [Flask](https://flask.palletsprojects.com/) - Framework web Python
+- [React](https://reactjs.org/) - Bibliothèque JavaScript pour l'interface
+- [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utilitaire
+- [SQLite](https://www.sqlite.org/) - Base de données légère
+- [Nginx](https://nginx.org/) - Serveur web haute performance
+- [Raspberry Pi Foundation](https://www.raspberrypi.org/) - Plateforme matérielle
+
+## 📞 Support
+
+### Canaux de support
+
+- 🐛 **Issues GitHub** : [Ouvrir une issue](https://github.com/RaphHerve/smart_shopping/issues)
+- 💬 **Discussions** : [GitHub Discussions](https://github.com/RaphHerve/smart_shopping/discussions)
+- 📧 **Email** : rapherv@gmail.com
+
+### FAQ
+
+**Q: Puis-je utiliser Smart Shopping sur un autre système que Raspberry Pi ?**
+R: Oui, le code est compatible avec Ubuntu/Debian. Adaptez simplement le script d'installation.
+
+**Q: Les données sont-elles sécurisées ?**
+R: Toutes les données restent locales sur votre Raspberry Pi. Aucune donnée n'est envoyée vers des serveurs externes.
+
+**Q: Puis-je personnaliser les magasins surveillés ?**
+R: Actuellement Carrefour, Leclerc et Lidl sont supportés. D'autres magasins peuvent être ajoutés en modifiant le code.
+
+**Q: L'application fonctionne-t-elle hors ligne ?**
+R: L'interface fonctionne hors ligne, mais la surveillance des prix nécessite une connexion internet.
+
+---
+
+<div align="center">
+
+**🛒 Smart Shopping Assistant - Optimisez vos courses avec l'intelligence artificielle! 🛒**
+
+[![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-red.svg)](https://github.com/RaphHerve/smart_shopping)
+[![Raspberry Pi](https://img.shields.io/badge/Optimized%20for-Raspberry%20Pi-red.svg)](https://www.raspberrypi.org/)
+
+</div>
