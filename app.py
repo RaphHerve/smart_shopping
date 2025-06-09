@@ -14,7 +14,7 @@ import schedule
 import time
 from datetime import datetime, timedelta
 from threading import Thread
-from email.mime.text import MimeText
+from email.mime.text import MIMEText as MimeText
 from email.mime.multipart import MimeMultipart
 from typing import List, Dict, Any, Optional
 
