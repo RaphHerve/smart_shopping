@@ -507,7 +507,94 @@ def not_found(error):
 @app.errorhandler(500)
 def internal_error(error):
     return jsonify({'error': 'Erreur interne du serveur'}), 500
+# ===== NOUVELLES ROUTES INTELLIGENTES =====
+# À ajouter à la fin de votre app.py existant, avant if __name__ == '__main__':
 
+@app.route('/intelligent')
+def intelligent_interface():
+    """Nouvelle interface intelligente"""
+    return render_template('intelligent.html')
+
+@app.route('/api/intelligent/search-recipes', methods=['POST'])
+def search_jow_recipes():
+    """Recherche de recettes Jow"""
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        
+        # Import du module intelligent
+        from smart_shopping_intelligent import JowAPIIntegration
+        jow_api = JowAPIIntegration()
+        
+        recipes = jow_api.search_recipes(query)
+        return jsonify({
+            'success': True,
+            'data': {'recipes': recipes, 'count': len(recipes)}
+        })
+    except Exception as e:
+        logger.error(f"Erreur recherche recettes: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/intelligent/consolidate', methods=['POST'])
+def consolidate_ingredients():
+    """Consolidation intelligente des ingrédients"""
+    try:
+        data = request.get_json()
+        recipes = data.get('recipes', [])
+        
+        from smart_shopping_intelligent import IngredientManager
+        manager = IngredientManager()
+        
+        # Traiter chaque recette
+        for recipe in recipes:
+            for ingredient in recipe.get('ingredients', []):
+                manager.add_ingredient(
+                    ingredient['name'],
+                    ingredient.get('quantity', 1),
+                    ingredient.get('unit', 'unité'),
+                    recipe['id'],
+                    recipe['name']
+                )
+        
+        consolidated_list = manager.consolidate_shopping_list()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'items': list(consolidated_list.values()),
+                'totalItems': len(consolidated_list),
+                'consolidatedItems': sum(1 for item in consolidated_list.values() if item.get('recipeCount', 0) > 1)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur consolidation: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/intelligent/suggestions', methods=['POST'])
+def get_intelligent_suggestions():
+    """Suggestions intelligentes pour un ingrédient"""
+    try:
+        data = request.get_json()
+        ingredient = data.get('ingredient', '')
+        
+        from smart_shopping_intelligent import IntelligentSuggestionEngine
+        suggestion_engine = IntelligentSuggestionEngine()
+        
+        suggestions = suggestion_engine.generate_suggestions(
+            {'normalizedName': ingredient},
+            data.get('context', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {'suggestions': suggestions}
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur suggestions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+        
 if __name__ == '__main__':
     try:
         logger.info("🚀 Démarrage Smart Shopping Assistant")
