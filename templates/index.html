@@ -76,6 +76,32 @@
                 transform: translateX(0);
             }
         }
+
+        .jow-ingredient-item {
+            transition: all 0.2s ease;
+        }
+
+        .jow-ingredient-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .quantity-input {
+            width: 70px;
+        }
+
+        .unit-select {
+            width: 100px;
+        }
+
+        .consolidated-badge {
+            background: linear-gradient(45deg, #fbbf24, #f59e0b);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
     </style>
 </head>
 <body class="bg-gray-50">
@@ -128,6 +154,11 @@
             const [newCategory, setNewCategory] = useState('Divers');
             const [newRecipe, setNewRecipe] = useState({ name: '', ingredients: '' });
             
+            // États pour Jow
+            const [jowSearchQuery, setJowSearchQuery] = useState('');
+            const [jowRecipes, setJowRecipes] = useState([]);
+            const [loadingJow, setLoadingJow] = useState(false);
+            
             const API_BASE = '';
             
             // Fonction utilitaire pour afficher les toasts
@@ -158,7 +189,7 @@
                 }
             };
             
-            // Fonctions API
+            // Fonctions API existantes
             const fetchShoppingList = async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/shopping-list`);
@@ -219,7 +250,108 @@
                 }
             };
             
-            // Gestion de la liste de courses
+            // === NOUVELLES FONCTIONS JOW ===
+            
+            // Recherche de recettes Jow RÉELLE
+            const searchJowRecipes = async () => {
+                if (!jowSearchQuery.trim()) return;
+                
+                setLoadingJow(true);
+                try {
+                    const response = await fetch(`${API_BASE}/api/jow/search-recipes`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            query: jowSearchQuery,
+                            limit: 6 
+                        })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        setJowRecipes(data.data.recipes);
+                        showToast(`${data.data.recipes.length} recettes trouvées sur Jow`, 'success');
+                    } else {
+                        showToast('Erreur lors de la recherche Jow: ' + data.error, 'error');
+                    }
+                } catch (error) {
+                    showToast('Erreur de connexion à Jow', 'error');
+                    console.error('Erreur recherche Jow:', error);
+                } finally {
+                    setLoadingJow(false);
+                }
+            };
+            
+            // Mise à jour quantité ingrédient Jow
+            const updateJowIngredientQuantity = (recipeId, ingredientIndex, newQuantity) => {
+                setJowRecipes(prev => prev.map(recipe => 
+                    recipe.id === recipeId ? {
+                        ...recipe,
+                        ingredients: recipe.ingredients.map((ing, idx) => 
+                            idx === ingredientIndex ? { ...ing, quantity: parseFloat(newQuantity) || 0 } : ing
+                        )
+                    } : recipe
+                ));
+            };
+            
+            // Mise à jour unité ingrédient Jow
+            const updateJowIngredientUnit = (recipeId, ingredientIndex, newUnit) => {
+                setJowRecipes(prev => prev.map(recipe => 
+                    recipe.id === recipeId ? {
+                        ...recipe,
+                        ingredients: recipe.ingredients.map((ing, idx) => 
+                            idx === ingredientIndex ? { ...ing, unit: newUnit } : ing
+                        )
+                    } : recipe
+                ));
+            };
+            
+            // Ajouter recette Jow avec consolidation intelligente
+            const addJowRecipeToList = async (recipe) => {
+                try {
+                    setLoading(true);
+                    
+                    // Appeler l'API de consolidation intelligente
+                    const response = await fetch(`${API_BASE}/api/intelligent/consolidate-and-add`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            recipe: recipe,
+                            existingList: shoppingList
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        // Actualiser la liste de courses
+                        await fetchShoppingList();
+                        
+                        const consolidatedCount = result.data.consolidatedItems || 0;
+                        const addedCount = result.data.addedItems || 0;
+                        
+                        if (consolidatedCount > 0) {
+                            showToast(
+                                `Recette "${recipe.name}" ajoutée avec ${consolidatedCount} consolidations intelligentes!`,
+                                'success'
+                            );
+                        } else {
+                            showToast(
+                                `Recette "${recipe.name}" ajoutée (${addedCount} ingrédients)`,
+                                'success'
+                            );
+                        }
+                    } else {
+                        showToast('Erreur lors de l\'ajout: ' + result.error, 'error');
+                    }
+                } catch (error) {
+                    showToast('Erreur lors de l\'ajout de la recette', 'error');
+                    console.error('Erreur ajout recette Jow:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            
+            // Gestion de la liste de courses (fonctions existantes)
             const addItem = async (name, category = newCategory) => {
                 if (!name.trim()) return;
                 
@@ -266,7 +398,7 @@
                 }
             };
             
-            // Gestion des recettes
+            // Gestion des recettes (fonctions existantes)
             const addRecipe = async () => {
                 if (!newRecipe.name.trim() || !newRecipe.ingredients.trim()) return;
                 
@@ -308,7 +440,7 @@
                 }
             };
             
-            // Vérifications manuelles
+            // Autres fonctions existantes...
             const checkPrices = async () => {
                 setLoading(true);
                 try {
@@ -347,7 +479,6 @@
                 }
             };
             
-            // Test d'email
             const sendTestEmail = async () => {
                 setLoading(true);
                 try {
@@ -371,6 +502,14 @@
             const categories = [
                 'Fruits et légumes', 'Viandes et poissons', 'Produits laitiers',
                 'Boulangerie', 'Épicerie', 'Surgelés', 'Boissons', 'Hygiène', 'Divers'
+            ];
+            
+            // Unités disponibles pour Jow
+            const availableUnits = [
+                'g', 'kg', 'ml', 'l', 'cl', 'dl',
+                'unité', 'pièce', 'tranche', 'gousse',
+                'cuillère à soupe', 'cuillère à café',
+                'tasse', 'verre', 'pincée'
             ];
             
             // Rendu de l'interface
@@ -434,27 +573,25 @@
                     <nav className="bg-white border-b border-gray-200">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <div className="flex space-x-8">
-           {[
-    { id: 'shopping', icon: 'fas fa-list', label: 'Liste de courses' },
-    { id: 'recipes', icon: 'fas fa-utensils', label: 'Recettes' },
-    { id: 'prices', icon: 'fas fa-tags', label: 'Prix & Promos' },
-    { id: 'settings', icon: 'fas fa-cog', label: 'Paramètres' },
-    { id: 'intelligent', icon: 'fas fa-brain', label: 'Interface Intelligente', isExternal: true, url: '/intelligent' }
-        ].map(tab => (
-            <button
-                key={tab.id}
-                onClick={() => tab.isExternal ? window.location.href = tab.url : setActiveTab(tab.id)}
-                className={`flex items-center px-3 py-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-            >
-                <i className={`${tab.icon} mr-2`}></i>
-                {tab.label}
-                {tab.isExternal && <i className="fas fa-external-link-alt ml-1 text-xs"></i>}
-            </button>
-                                        ))}
+                                {[
+                                    { id: 'shopping', icon: 'fas fa-list', label: 'Liste de courses' },
+                                    { id: 'recipes', icon: 'fas fa-utensils', label: 'Recettes' },
+                                    { id: 'prices', icon: 'fas fa-tags', label: 'Prix & Promos' },
+                                    { id: 'settings', icon: 'fas fa-cog', label: 'Paramètres' }
+                                ].map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setActiveTab(tab.id)}
+                                        className={`flex items-center px-3 py-4 text-sm font-medium border-b-2 transition-colors ${
+                                            activeTab === tab.id
+                                                ? 'border-blue-500 text-blue-600'
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <i className={`${tab.icon} mr-2`}></i>
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </nav>
@@ -472,7 +609,65 @@
                                             Ajouter un article
                                         </h2>
                                         
-                                        <div className="flex flex-col sm:flex-row gap-3">
+                                        <div className="flex items-start">
+                                            <i className="fas fa-brain text-yellow-500 mt-1 mr-3"></i>
+                                            <div>
+                                                <strong>Suggestions intelligentes</strong> : Le système apprend de vos habitudes 
+                                                et vous propose automatiquement les articles que vous achetez régulièrement
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-start">
+                                            <i className="fas fa-tags text-red-500 mt-1 mr-3"></i>
+                                            <div>
+                                                <strong>Détection d'erreurs de prix</strong> : Surveillance automatique des réductions 
+                                                supérieures à 90% qui peuvent être des erreurs de prix sur Amazon
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-start">
+                                            <i className="fas fa-envelope text-purple-500 mt-1 mr-3"></i>
+                                            <div>
+                                                <strong>Notifications email</strong> : Alertes automatiques par email 
+                                                pour les bonnes affaires détectées et promotions locales
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                    
+                    {/* Footer */}
+                    <footer className="bg-white border-t border-gray-200 mt-12">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center">
+                                <div className="flex items-center text-sm text-gray-500">
+                                    <i className="fas fa-heart text-red-500 mr-1"></i>
+                                    Développé avec ❤️ pour optimiser vos courses
+                                </div>
+                                
+                                <div className="flex items-center mt-4 md:mt-0 space-x-4 text-sm text-gray-500">
+                                    <span>Smart Shopping Assistant v2.0</span>
+                                    <span>•</span>
+                                    <span>Jow Integration</span>
+                                    <span>•</span>
+                                    <span>Raspberry Pi</span>
+                                    <span>•</span>
+                                    <span>{new Date().getFullYear()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+        
+        // Rendu de l'application
+        ReactDOM.render(<SmartShoppingApp />, document.getElementById('root'));
+    </script>
+</body>
+</html> flex-col sm:flex-row gap-3">
                                             <div className="flex-1">
                                                 <input
                                                     type="text"
@@ -689,8 +884,123 @@
                                     </div>
                                 </div>
                                 
-                                {/* Ajouter une recette */}
+                                {/* Section Jow + Ajouter une recette */}
                                 <div className="space-y-6">
+                                    {/* RECETTES JOW INTÉGRÉES */}
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                            <i className="fas fa-globe text-purple-500 mr-2"></i>
+                                            Recettes Jow
+                                        </h3>
+                                        
+                                        {/* Recherche Jow */}
+                                        <div className="mb-4">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Rechercher sur Jow..."
+                                                    value={jowSearchQuery}
+                                                    onChange={(e) => setJowSearchQuery(e.target.value)}
+                                                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                    onKeyPress={(e) => e.key === 'Enter' && searchJowRecipes()}
+                                                />
+                                                <button
+                                                    onClick={searchJowRecipes}
+                                                    disabled={loadingJow || !jowSearchQuery.trim()}
+                                                    className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors"
+                                                >
+                                                    {loadingJow ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-search"></i>}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Résultats Jow */}
+                                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                                            {jowRecipes.map(recipe => (
+                                                <div key={recipe.id} className="border border-purple-200 rounded-lg p-4 bg-purple-50">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div>
+                                                            <h4 className="font-semibold text-gray-900">{recipe.name}</h4>
+                                                            <p className="text-sm text-gray-600">
+                                                                🍽️ {recipe.servings} portions • ⏱️ {recipe.prepTime} min
+                                                            </p>
+                                                        </div>
+                                                        <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded">
+                                                            Jow
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    {/* Ingrédients avec quantités ajustables */}
+                                                    <div className="mb-4">
+                                                        <p className="text-sm font-medium text-gray-700 mb-2">
+                                                            Ingrédients (modifiables) :
+                                                        </p>
+                                                        <div className="space-y-2">
+                                                            {recipe.ingredients.map((ingredient, idx) => (
+                                                                <div key={idx} className="jow-ingredient-item flex items-center justify-between py-2 px-3 bg-white rounded border">
+                                                                    <span className="text-sm text-gray-700 flex-1">{ingredient.name}</span>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <input
+                                                                            type="number"
+                                                                            value={ingredient.quantity}
+                                                                            onChange={(e) => updateJowIngredientQuantity(recipe.id, idx, e.target.value)}
+                                                                            className="quantity-input p-1 border border-gray-300 rounded text-center text-sm"
+                                                                            step="0.1"
+                                                                            min="0"
+                                                                        />
+                                                                        <select
+                                                                            value={ingredient.unit}
+                                                                            onChange={(e) => updateJowIngredientUnit(recipe.id, idx, e.target.value)}
+                                                                            className="unit-select p-1 border border-gray-300 rounded text-xs"
+                                                                        >
+                                                                            {availableUnits.map(unit => (
+                                                                                <option key={unit} value={unit}>{unit}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <button
+                                                        onClick={() => addJowRecipeToList(recipe)}
+                                                        disabled={loading}
+                                                        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors font-medium"
+                                                    >
+                                                        {loading ? (
+                                                            <><i className="fas fa-spinner fa-spin mr-2"></i>Ajout en cours...</>
+                                                        ) : (
+                                                            <><i className="fas fa-magic mr-2"></i>Ajouter avec consolidation intelligente</>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            
+                                            {jowRecipes.length === 0 && !loadingJow && jowSearchQuery && (
+                                                <p className="text-gray-500 text-center py-4">
+                                                    Aucune recette trouvée pour "{jowSearchQuery}"
+                                                </p>
+                                            )}
+                                            
+                                            {jowRecipes.length === 0 && !loadingJow && !jowSearchQuery && (
+                                                <div className="text-center py-8">
+                                                    <i className="fas fa-search text-3xl text-gray-300 mb-3"></i>
+                                                    <p className="text-gray-500">Recherchez des recettes Jow</p>
+                                                    <p className="text-sm text-gray-400">Ex: "pâtes", "poulet", "salade"...</p>
+                                                </div>
+                                            )}
+                                            
+                                            {loadingJow && (
+                                                <div className="text-center py-8">
+                                                    <i className="fas fa-spinner fa-spin text-2xl text-purple-600 mb-3"></i>
+                                                    <p className="text-gray-600">Recherche sur Jow en cours...</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Ajouter une recette personnalisée */}
                                     <div className="bg-white rounded-xl shadow-lg p-6">
                                         <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                                             <i className="fas fa-plus-circle text-blue-500 mr-2"></i>
@@ -732,34 +1042,6 @@
                                                 <i className="fas fa-save mr-2"></i>
                                                 Sauvegarder la recette
                                             </button>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Intégration Jow (simulation) */}
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                            <i className="fas fa-globe text-purple-500 mr-2"></i>
-                                            Recettes Jow
-                                        </h3>
-                                        
-                                        <div className="space-y-3">
-                                            <div className="p-4 border border-gray-200 rounded-lg">
-                                                <h4 className="font-medium text-gray-900">Pâtes à la carbonara</h4>
-                                                <p className="text-sm text-gray-600 mt-1">Source: Jow • 4 personnes</p>
-                                                <button className="mt-2 text-blue-600 hover:text-blue-800 text-sm">
-                                                    <i className="fas fa-external-link-alt mr-1"></i>
-                                                    Voir sur Jow
-                                                </button>
-                                            </div>
-                                            
-                                            <div className="p-4 border border-gray-200 rounded-lg">
-                                                <h4 className="font-medium text-gray-900">Salade César</h4>
-                                                <p className="text-sm text-gray-600 mt-1">Source: Jow • 2 personnes</p>
-                                                <button className="mt-2 text-blue-600 hover:text-blue-800 text-sm">
-                                                    <i className="fas fa-external-link-alt mr-1"></i>
-                                                    Voir sur Jow
-                                                </button>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -898,6 +1180,13 @@
                                                     <span className="text-gray-600">Articles en liste:</span>
                                                     <span className="font-medium">{stats.shopping_list_items || 0}</span>
                                                 </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Recettes Jow:</span>
+                                                    <span className="font-medium text-purple-600">
+                                                        <i className="fas fa-globe mr-1"></i>
+                                                        Connecté
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                         
@@ -937,6 +1226,12 @@
                                                     </span>
                                                 </div>
                                                 <div className="flex justify-between items-center">
+                                                    <span className="text-gray-600">Sync Jow:</span>
+                                                    <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                                        En temps réel
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center">
                                                     <span className="text-gray-600">Nettoyage base:</span>
                                                     <span className="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded">
                                                         Dimanche à 2h
@@ -962,6 +1257,16 @@
                                                     <i className="fas fa-broom mr-2"></i>
                                                     Nettoyer anciens
                                                 </button>
+                                                
+                                                <button className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                                                    <i className="fas fa-globe mr-2"></i>
+                                                    Test API Jow
+                                                </button>
+                                                
+                                                <button className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                                                    <i className="fas fa-download mr-2"></i>
+                                                    Export données
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -969,70 +1274,30 @@
                                 
                                 {/* Aide et documentation */}
                                 <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Aide et support</h3>
-                                    <div className="space-y-3 text-sm">
+                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Aide et fonctionnalités</h3>
+                                    <div className="space-y-4 text-sm">
                                         <div className="flex items-start">
-                                            <i className="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                                            <i className="fas fa-magic text-purple-500 mt-1 mr-3"></i>
                                             <div>
-                                                <strong>Smart Shopping Assistant</strong> surveille automatiquement les prix et promotions 
-                                                pour optimiser vos courses.
+                                                <strong>Consolidation intelligente Jow</strong> : Détecte automatiquement les doublons d'ingrédients 
+                                                entre recettes et consolide les quantités (ex: 200g + 300g = 500g de pâtes)
                                             </div>
                                         </div>
                                         
                                         <div className="flex items-start">
-                                            <i className="fas fa-robot text-green-500 mt-1 mr-3"></i>
+                                            <i className="fas fa-adjust text-blue-500 mt-1 mr-3"></i>
                                             <div>
-                                                Les <strong>suggestions intelligentes</strong> apprennent de vos habitudes 
-                                                pour vous proposer les articles que vous oubliez souvent.
+                                                <strong>Quantités ajustables</strong> : Modifiez les quantités et unités directement 
+                                                dans l'interface avant d'ajouter à votre liste
                                             </div>
                                         </div>
                                         
                                         <div className="flex items-start">
-                                            <i className="fas fa-shield-alt text-red-500 mt-1 mr-3"></i>
+                                            <i className="fas fa-globe text-green-500 mt-1 mr-3"></i>
                                             <div>
-                                                La <strong>détection d'erreurs de prix</strong> vous alerte des réductions 
-                                                supérieures à 90% qui peuvent être des erreurs.
+                                                <strong>Recherche Jow en temps réel</strong> : Accès direct aux milliers de recettes 
+                                                Jow avec ingrédients et quantités automatiques
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-start">
-                                            <i className="fas fa-envelope text-purple-500 mt-1 mr-3"></i>
-                                            <div>
-                                                Les <strong>notifications email</strong> vous préviennent en temps réel 
-                                                des bonnes affaires détectées.
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </main>
-                    
-                    {/* Footer */}
-                    <footer className="bg-white border-t border-gray-200 mt-12">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                            <div className="flex flex-col md:flex-row justify-between items-center">
-                                <div className="flex items-center text-sm text-gray-500">
-                                    <i className="fas fa-heart text-red-500 mr-1"></i>
-                                    Développé avec ❤️ pour optimiser vos courses
-                                </div>
-                                
-                                <div className="flex items-center mt-4 md:mt-0 space-x-4 text-sm text-gray-500">
-                                    <span>Smart Shopping Assistant v1.0</span>
-                                    <span>•</span>
-                                    <span>Raspberry Pi</span>
-                                    <span>•</span>
-                                    <span>{new Date().getFullYear()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </footer>
-                </div>
-            );
-        };
-        
-        // Rendu de l'application
-        ReactDOM.render(<SmartShoppingApp />, document.getElementById('root'));
-    </script>
-</body>
-</html>
+                                        <div className="flex
