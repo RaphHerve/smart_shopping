@@ -614,4 +614,680 @@ class ShoppingListManager:
     
     def update_item(self, item_id: int, **kwargs) -> bool:
         """Met à jour un article de la liste"""
-        allowed_fields = ['name', 'category', 'quantity',
+        allowed_fields = ['name', 'category', 'quantity', 'price', 'store', 'checked']
+        updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+        
+        if not updates:
+            return False
+        
+        set_clause = ', '.join([f"{k} = ?" for k in updates.keys()])
+        values = list(updates.values()) + [item_id]
+        
+        rows_affected = db.execute_update(f'''
+            UPDATE shopping_list 
+            SET {set_clause}, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', tuple(values))
+        
+        return rows_affected > 0
+    
+    def remove_item(self, item_id: int) -> bool:
+        """Supprime un article de la liste"""
+        rows_affected = db.execute_update('''
+            DELETE FROM shopping_list WHERE id = ?
+        ''', (item_id,))
+        
+        return rows_affected > 0
+    
+    def get_suggestions(self, limit: int = 10) -> List[Dict]:
+        """Récupère les suggestions basées sur les articles fréquents"""
+        return db.execute_query('''
+            SELECT name, category, usage_count
+            FROM frequent_items
+            WHERE name NOT IN (
+                SELECT name FROM shopping_list WHERE checked = 0
+            )
+            ORDER BY usage_count DESC, last_used DESC
+            LIMIT ?
+        ''', (limit,))
+    
+    def _update_frequent_items(self, name: str, category: str):
+        """Met à jour les statistiques des articles fréquents"""
+        existing = db.execute_query('''
+            SELECT id FROM frequent_items WHERE name = ?
+        ''', (name,))
+        
+        if existing:
+            db.execute_update('''
+                UPDATE frequent_items 
+                SET usage_count = usage_count + 1, last_used = CURRENT_TIMESTAMP
+                WHERE name = ?
+            ''', (name,))
+        else:
+            db.execute_update('''
+                INSERT INTO frequent_items (name, category)
+                VALUES (?, ?)
+            ''', (name, category))
+
+class RecipeManager:
+    """Gestionnaire des recettes"""
+    
+    def get_recipes(self) -> List[Dict]:
+        """Récupère toutes les recettes"""
+        recipes = db.execute_query('''
+            SELECT * FROM recipes ORDER BY created_at DESC
+        ''')
+        
+        # Parse les ingrédients JSON
+        for recipe in recipes:
+            if recipe['ingredients']:
+                try:
+                    recipe['ingredients'] = json.loads(recipe['ingredients'])
+                except:
+                    recipe['ingredients'] = []
+        
+        return recipes
+    
+    def add_recipe(self, name: str, ingredients: List[str], source: str = 'Personnalisée', 
+                   url: str = None, servings: int = 4) -> int:
+        """Ajoute une nouvelle recette"""
+        ingredients_json = json.dumps(ingredients)
+        
+        recipe_id = db.execute_update('''
+            INSERT INTO recipes (name, source, url, ingredients, servings)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (name, source, url, ingredients_json, servings))
+        
+        logger.info(f"Recette ajoutée: {name}")
+        return recipe_id
+    
+    def add_recipe_to_shopping_list(self, recipe_id: int) -> Dict:
+        """Ajoute les ingrédients d'une recette à la liste de courses"""
+        recipe = db.execute_query('''
+            SELECT * FROM recipes WHERE id = ?
+        ''', (recipe_id,))
+        
+        if not recipe:
+            return {'success': False, 'message': 'Recette non trouvée'}
+        
+        recipe = recipe[0]
+        try:
+            ingredients = json.loads(recipe['ingredients'])
+        except:
+            ingredients = []
+        
+        shopping_manager = ShoppingListManager()
+        added_count = 0
+        
+        for ingredient in ingredients:
+            ingredient_name = ingredient.strip()
+            shopping_manager.add_item(ingredient_name, 'Recettes')
+            added_count += 1
+        
+        return {
+            'success': True,
+            'recipe_name': recipe['name'],
+            'added_count': added_count
+        }
+
+class NotificationManager:
+    """Gestionnaire des notifications email"""
+    
+    def send_email_notification(self, subject: str, body: str, recipient: str = None) -> bool:
+        """Envoie une notification email"""
+        if not GMAIL_EMAIL or not GMAIL_APP_PASSWORD:
+            logger.warning("Configuration email manquante")
+            return False
+        
+        recipient = recipient or GMAIL_EMAIL
+        
+        try:
+            msg = MimeMultipart()
+            msg['From'] = GMAIL_EMAIL
+            msg['To'] = recipient
+            msg['Subject'] = subject
+            
+            msg.attach(MimeText(body, 'html'))
+            
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+            text = msg.as_string()
+            server.sendmail(GMAIL_EMAIL, recipient, text)
+            server.quit()
+            
+            logger.info(f"Email envoyé: {subject}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Erreur envoi email: {e}")
+            return False
+
+# Instances des gestionnaires
+shopping_manager = ShoppingListManager()
+recipe_manager = RecipeManager()
+notification_manager = NotificationManager()
+
+# Routes API Flask
+
+@app.route('/')
+def index():
+    """Page d'accueil de l'application"""
+    return render_template('index.html')
+
+@app.route('/api/shopping-list', methods=['GET'])
+def get_shopping_list():
+    """API: Récupère la liste de courses"""
+    try:
+        items = shopping_manager.get_shopping_list()
+        return jsonify(items)
+    except Exception as e:
+        logger.error(f"Erreur récupération liste: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shopping-list', methods=['POST'])
+def add_shopping_item():
+    """API: Ajoute un article à la liste de courses"""
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        category = data.get('category', 'Divers')
+        quantity = data.get('quantity', 1)
+        
+        if not name:
+            return jsonify({'error': 'Le nom de l\'article est requis'}), 400
+        
+        item_id = shopping_manager.add_item(name, category, quantity)
+        return jsonify({'id': item_id, 'message': 'Article ajouté avec succès'})
+        
+    except Exception as e:
+        logger.error(f"Erreur ajout article: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shopping-list/<int:item_id>', methods=['PUT'])
+def update_shopping_item(item_id):
+    """API: Met à jour un article de la liste"""
+    try:
+        data = request.get_json()
+        success = shopping_manager.update_item(item_id, **data)
+        
+        if success:
+            return jsonify({'message': 'Article mis à jour avec succès'})
+        else:
+            return jsonify({'error': 'Article non trouvé'}), 404
+            
+    except Exception as e:
+        logger.error(f"Erreur mise à jour article: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/shopping-list/<int:item_id>', methods=['DELETE'])
+def delete_shopping_item(item_id):
+    """API: Supprime un article de la liste"""
+    try:
+        success = shopping_manager.remove_item(item_id)
+        
+        if success:
+            return jsonify({'message': 'Article supprimé avec succès'})
+        else:
+            return jsonify({'error': 'Article non trouvé'}), 404
+            
+    except Exception as e:
+        logger.error(f"Erreur suppression article: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/frequent-items', methods=['GET'])
+def get_frequent_items():
+    """API: Récupère les suggestions d'articles fréquents"""
+    try:
+        suggestions = shopping_manager.get_suggestions()
+        return jsonify(suggestions)
+    except Exception as e:
+        logger.error(f"Erreur récupération suggestions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recipes', methods=['GET'])
+def get_recipes():
+    """API: Récupère toutes les recettes"""
+    try:
+        recipes = recipe_manager.get_recipes()
+        return jsonify(recipes)
+    except Exception as e:
+        logger.error(f"Erreur récupération recettes: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recipes', methods=['POST'])
+def add_recipe():
+    """API: Ajoute une nouvelle recette"""
+    try:
+        data = request.get_json()
+        name = data.get('name')
+        ingredients = data.get('ingredients', [])
+        source = data.get('source', 'Personnalisée')
+        servings = data.get('servings', 4)
+        
+        if not name or not ingredients:
+            return jsonify({'error': 'Nom et ingrédients requis'}), 400
+        
+        recipe_id = recipe_manager.add_recipe(name, ingredients, source, servings=servings)
+        return jsonify({'id': recipe_id, 'message': 'Recette ajoutée avec succès'})
+        
+    except Exception as e:
+        logger.error(f"Erreur ajout recette: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/recipes/<int:recipe_id>/add-to-list', methods=['POST'])
+def add_recipe_to_list(recipe_id):
+    """API: Ajoute les ingrédients d'une recette à la liste de courses"""
+    try:
+        result = recipe_manager.add_recipe_to_shopping_list(recipe_id)
+        
+        if result['success']:
+            return jsonify(result)
+        else:
+            return jsonify(result), 404
+            
+    except Exception as e:
+        logger.error(f"Erreur ajout recette à la liste: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ===== NOUVELLES ROUTES JOW =====
+
+@app.route('/api/jow/search-recipes', methods=['POST'])
+def search_jow_recipes():
+    """API: Recherche de recettes sur Jow"""
+    try:
+        data = request.get_json()
+        query = data.get('query', '')
+        limit = data.get('limit', 10)
+        
+        if not query.strip():
+            return jsonify({'error': 'Query de recherche requise'}), 400
+        
+        # Recherche via le service Jow
+        recipes = jow_service.search_recipes(query, limit)
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'recipes': recipes,
+                'count': len(recipes),
+                'query': query
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur recherche Jow: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur lors de la recherche sur Jow',
+            'details': str(e) if app.debug else None
+        }), 500
+
+@app.route('/api/jow/recipe/<recipe_id>', methods=['GET'])
+def get_jow_recipe_details(recipe_id):
+    """API: Récupère les détails d'une recette Jow"""
+    try:
+        recipe = jow_service.get_recipe_details(recipe_id)
+        
+        if recipe:
+            return jsonify({
+                'success': True,
+                'data': recipe
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Recette non trouvée'
+            }), 404
+            
+    except Exception as e:
+        logger.error(f"Erreur détails recette Jow {recipe_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur lors de la récupération des détails'
+        }), 500
+
+@app.route('/api/intelligent/consolidate-and-add', methods=['POST'])
+def consolidate_and_add_recipe():
+    """API: Ajoute une recette avec consolidation intelligente"""
+    try:
+        data = request.get_json()
+        recipe = data.get('recipe')
+        existing_list = data.get('existingList', [])
+        
+        if not recipe or not recipe.get('ingredients'):
+            return jsonify({
+                'success': False,
+                'error': 'Recette avec ingrédients requise'
+            }), 400
+        
+        # Préparer les articles à ajouter
+        items_to_add = []
+        for ingredient in recipe['ingredients']:
+            items_to_add.append({
+                'name': ingredient['name'],
+                'quantity': ingredient.get('quantity', 1),
+                'unit': ingredient.get('unit', 'unité'),
+                'recipe_id': recipe['id'],
+                'recipe_name': recipe['name']
+            })
+        
+        # Ajouter avec consolidation
+        result = shopping_manager.add_multiple_items_with_consolidation(items_to_add, existing_list)
+        
+        if result.get('success'):
+            return jsonify({
+                'success': True,
+                'data': result,
+                'message': f"Recette {recipe['name']} ajoutée avec consolidation intelligente"
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', 'Erreur lors de la consolidation')
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Erreur consolidation et ajout: {e}")
+        return jsonify({
+            'success': False,
+            'error': 'Erreur lors de l\'ajout avec consolidation'
+        }), 500
+
+@app.route('/api/intelligent/consolidate', methods=['POST'])
+def consolidate_ingredients():
+    """API: Consolidation intelligente des ingrédients (pour compatibilité)"""
+    try:
+        data = request.get_json()
+        recipes = data.get('recipes', [])
+        
+        from smart_shopping_intelligent import IngredientManager
+        manager = IngredientManager()
+        
+        # Traiter chaque recette
+        for recipe in recipes:
+            for ingredient in recipe.get('ingredients', []):
+                manager.add_ingredient(
+                    ingredient['name'],
+                    ingredient.get('quantity', 1),
+                    ingredient.get('unit', 'unité'),
+                    recipe['id'],
+                    recipe['name']
+                )
+        
+        consolidated_list = manager.consolidate_shopping_list()
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'items': list(consolidated_list.values()),
+                'totalItems': len(consolidated_list),
+                'consolidatedItems': sum(1 for item in consolidated_list.values() if item.get('recipeCount', 0) > 1)
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur consolidation: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/intelligent/suggestions', methods=['POST'])
+def get_intelligent_suggestions():
+    """API: Suggestions intelligentes pour un ingrédient"""
+    try:
+        data = request.get_json()
+        ingredient = data.get('ingredient', '')
+        
+        from smart_shopping_intelligent import IntelligentSuggestionEngine
+        suggestion_engine = IntelligentSuggestionEngine()
+        
+        suggestions = suggestion_engine.generate_suggestions(
+            {'normalizedName': ingredient},
+            data.get('context', {})
+        )
+        
+        return jsonify({
+            'success': True,
+            'data': {'suggestions': suggestions}
+        })
+        
+    except Exception as e:
+        logger.error(f"Erreur suggestions: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/stats', methods=['GET'])
+def get_stats():
+    """API: Récupère les statistiques de l'application"""
+    try:
+        stats = {
+            'shopping_list_items': len(db.execute_query('SELECT id FROM shopping_list WHERE checked = 0')),
+            'completed_items': len(db.execute_query('SELECT id FROM shopping_list WHERE checked = 1')),
+            'recipes': len(db.execute_query('SELECT id FROM recipes')),
+            'price_alerts': 0,
+            'active_promotions': 0,
+            'frequent_items': len(db.execute_query('SELECT id FROM frequent_items')),
+            'jow_recipes_cached': len(db.execute_query('SELECT id FROM jow_recipes_cache')),
+            'jow_api_status': 'connected' if JOW_API_KEY else 'simulation'
+        }
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        logger.error(f"Erreur récupération stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/send-test-email', methods=['POST'])
+def send_test_email():
+    """API: Envoie un email de test"""
+    try:
+        success = notification_manager.send_email_notification(
+            "Test Smart Shopping",
+            "<h2>Email de test</h2><p>Votre configuration email fonctionne correctement!</p><p>Smart Shopping v2.0 avec intégration Jow</p>"
+        )
+        
+        if success:
+            return jsonify({'message': 'Email de test envoyé avec succès'})
+        else:
+            return jsonify({'error': 'Échec envoi email - vérifiez la configuration'}), 500
+            
+    except Exception as e:
+        logger.error(f"Erreur test email: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/check-prices', methods=['POST'])
+def check_prices():
+    """API: Vérification manuelle des prix (placeholder)"""
+    try:
+        # TODO: Implémenter la vraie vérification des prix
+        return jsonify({
+            'success': True,
+            'message': 'Vérification des prix lancée',
+            'alerts_found': 0
+        })
+    except Exception as e:
+        logger.error(f"Erreur vérification prix: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/check-promotions', methods=['POST'])
+def check_promotions():
+    """API: Vérification manuelle des promotions (placeholder)"""
+    try:
+        # TODO: Implémenter la vraie vérification des promotions
+        return jsonify({
+            'success': True,
+            'message': 'Vérification des promotions lancée',
+            'promotions_found': 0
+        })
+    except Exception as e:
+        logger.error(f"Erreur vérification promotions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/price-alerts', methods=['GET'])
+def get_price_alerts():
+    """API: Récupère les alertes de prix"""
+    try:
+        alerts = db.execute_query('''
+            SELECT * FROM price_alerts 
+            ORDER BY created_at DESC 
+            LIMIT 20
+        ''')
+        return jsonify(alerts)
+    except Exception as e:
+        logger.error(f"Erreur récupération alertes: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/promotions', methods=['GET'])
+def get_promotions():
+    """API: Récupère les promotions locales"""
+    try:
+        promotions = db.execute_query('''
+            SELECT * FROM local_promotions 
+            WHERE valid_until >= date('now')
+            ORDER BY created_at DESC 
+            LIMIT 20
+        ''')
+        return jsonify(promotions)
+    except Exception as e:
+        logger.error(f"Erreur récupération promotions: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ===== ROUTES DE SANTÉ ET DEBUG =====
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """API: Vérification de la santé de l'application"""
+    try:
+        # Test base de données
+        db_status = 'ok'
+        try:
+            db.execute_query('SELECT 1')
+        except Exception:
+            db_status = 'error'
+        
+        # Test API Jow
+        jow_status = 'simulation'
+        if JOW_API_KEY:
+            jow_status = 'configured'
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'version': '2.0.0',
+            'database': db_status,
+            'jow_api': jow_status,
+            'email_config': 'ok' if GMAIL_EMAIL and GMAIL_APP_PASSWORD else 'missing'
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e)
+        }), 500
+
+@app.route('/api/debug/jow-test', methods=['POST'])
+def debug_jow_test():
+    """API: Test de l'API Jow pour debug"""
+    try:
+        data = request.get_json()
+        query = data.get('query', 'pâtes')
+        
+        recipes = jow_service.search_recipes(query, 3)
+        
+        return jsonify({
+            'success': True,
+            'query': query,
+            'recipes_found': len(recipes),
+            'api_key_configured': bool(JOW_API_KEY),
+            'recipes': recipes
+        })
+    except Exception as e:
+        logger.error(f"Erreur test Jow: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+# Gestion des erreurs globales
+@app.errorhandler(404)
+def not_found(error):
+    return jsonify({'error': 'Endpoint non trouvé'}), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    return jsonify({'error': 'Erreur interne du serveur'}), 500
+
+# Fonction pour initialiser les données de test
+def init_sample_data():
+    """Initialise quelques données d'exemple si la base est vide"""
+    try:
+        # Vérifier si on a déjà des données
+        existing_recipes = db.execute_query('SELECT COUNT(*) as count FROM recipes')[0]['count']
+        
+        if existing_recipes == 0:
+            logger.info("Initialisation des données d'exemple")
+            
+            # Ajouter quelques recettes d'exemple
+            sample_recipes = [
+                {
+                    'name': 'Pâtes Carbonara',
+                    'ingredients': ['pâtes spaghetti', 'lardons', 'œufs', 'parmesan', 'crème fraîche'],
+                    'source': 'Personnalisée'
+                },
+                {
+                    'name': 'Salade César',
+                    'ingredients': ['salade romaine', 'poulet', 'parmesan', 'croutons', 'sauce césar'],
+                    'source': 'Personnalisée'
+                },
+                {
+                    'name': 'Risotto aux champignons',
+                    'ingredients': ['riz arborio', 'champignons', 'bouillon', 'vin blanc', 'parmesan'],
+                    'source': 'Personnalisée'
+                }
+            ]
+            
+            for recipe_data in sample_recipes:
+                recipe_manager.add_recipe(
+                    recipe_data['name'],
+                    recipe_data['ingredients'],
+                    recipe_data['source']
+                )
+            
+            # Ajouter quelques articles fréquents
+            frequent_items = [
+                ('Pain', 'Boulangerie'),
+                ('Lait', 'Produits laitiers'),
+                ('Œufs', 'Produits laitiers'),
+                ('Tomates', 'Fruits et légumes'),
+                ('Pommes', 'Fruits et légumes')
+            ]
+            
+            for name, category in frequent_items:
+                db.execute_update('''
+                    INSERT OR IGNORE INTO frequent_items (name, category, usage_count)
+                    VALUES (?, ?, ?)
+                ''', (name, category, 5))
+            
+            logger.info("Données d'exemple initialisées")
+            
+    except Exception as e:
+        logger.error(f"Erreur initialisation données: {e}")
+
+if __name__ == '__main__':
+    try:
+        logger.info("🚀 Démarrage Smart Shopping Assistant v2.0 avec Jow")
+        
+        # Initialiser les données d'exemple si nécessaire
+        init_sample_data()
+        
+        logger.info("🌐 Application accessible sur http://192.168.1.177")
+        logger.info(f"🔗 API Jow: {'Configurée' if JOW_API_KEY else 'Mode simulation'}")
+        
+        # Mode développement ou production
+        if os.getenv('FLASK_ENV') == 'development':
+            app.run(host='0.0.0.0', port=5000, debug=True)
+        else:
+            app.run(host='0.0.0.0', port=5000, debug=False)
+            
+    except KeyboardInterrupt:
+        logger.info("👋 Arrêt de l'application")
+    except Exception as e:
+        logger.error(f"💥 Erreur fatale: {e}")
+        raise
