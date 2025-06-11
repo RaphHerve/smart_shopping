@@ -609,65 +609,7 @@
                                             Ajouter un article
                                         </h2>
                                         
-                                        <div className="flex items-start">
-                                            <i className="fas fa-brain text-yellow-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Suggestions intelligentes</strong> : Le système apprend de vos habitudes 
-                                                et vous propose automatiquement les articles que vous achetez régulièrement
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-tags text-red-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Détection d'erreurs de prix</strong> : Surveillance automatique des réductions 
-                                                supérieures à 90% qui peuvent être des erreurs de prix sur Amazon
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-envelope text-purple-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Notifications email</strong> : Alertes automatiques par email 
-                                                pour les bonnes affaires détectées et promotions locales
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </main>
-                    
-                    {/* Footer */}
-                    <footer className="bg-white border-t border-gray-200 mt-12">
-                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-                            <div className="flex flex-col md:flex-row justify-between items-center">
-                                <div className="flex items-center text-sm text-gray-500">
-                                    <i className="fas fa-heart text-red-500 mr-1"></i>
-                                    Développé avec ❤️ pour optimiser vos courses
-                                </div>
-                                
-                                <div className="flex items-center mt-4 md:mt-0 space-x-4 text-sm text-gray-500">
-                                    <span>Smart Shopping Assistant v2.0</span>
-                                    <span>•</span>
-                                    <span>Jow Integration</span>
-                                    <span>•</span>
-                                    <span>Raspberry Pi</span>
-                                    <span>•</span>
-                                    <span>{new Date().getFullYear()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </footer>
-                </div>
-            );
-        };
-        
-        // Rendu de l'application
-        ReactDOM.render(<SmartShoppingApp />, document.getElementById('root'));
-    </script>
-</body>
-</html> flex-col sm:flex-row gap-3">
+                                        <div className="flex flex-col sm:flex-row gap-3">
                                             <div className="flex-1">
                                                 <input
                                                     type="text"
@@ -1300,4 +1242,62 @@
                                             </div>
                                         </div>
                                         
-                                        <div className="flex
+                                        <div className="flex items-start">
+                                            <i className="fas fa-brain text-yellow-500 mt-1 mr-3"></i>
+                                            <div>
+                                                <strong>Suggestions intelligentes</strong> : Le système apprend de vos habitudes 
+                                                et vous propose automatiquement les articles que vous achetez régulièrement
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-start">
+                                            <i className="fas fa-tags text-red-500 mt-1 mr-3"></i>
+                                            <div>
+                                                <strong>Détection d'erreurs de prix</strong> : Surveillance automatique des réductions 
+                                                supérieures à 90% qui peuvent être des erreurs de prix sur Amazon
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex items-start">
+                                            <i className="fas fa-envelope text-purple-500 mt-1 mr-3"></i>
+                                            <div>
+                                                <strong>Notifications email</strong> : Alertes automatiques par email 
+                                                pour les bonnes affaires détectées et promotions locales
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                    
+                    {/* Footer */}
+                    <footer className="bg-white border-t border-gray-200 mt-12">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center">
+                                <div className="flex items-center text-sm text-gray-500">
+                                    <i className="fas fa-heart text-red-500 mr-1"></i>
+                                    Développé avec ❤️ pour optimiser vos courses
+                                </div>
+                                
+                                <div className="flex items-center mt-4 md:mt-0 space-x-4 text-sm text-gray-500">
+                                    <span>Smart Shopping Assistant v2.0</span>
+                                    <span>•</span>
+                                    <span>Jow Integration</span>
+                                    <span>•</span>
+                                    <span>Raspberry Pi</span>
+                                    <span>•</span>
+                                    <span>{new Date().getFullYear()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+        
+        // Rendu de l'application
+        ReactDOM.render(<SmartShoppingApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
