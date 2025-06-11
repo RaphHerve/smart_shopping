@@ -1,31 +1,41 @@
 # 🛒 Smart Shopping Assistant
 
-Assistant intelligent pour optimiser vos courses et détecter les erreurs de prix, conçu spécialement pour Raspberry Pi.
+Assistant intelligent pour optimiser vos courses avec IA, conçu spécialement pour Raspberry Pi.
 
 ![Smart Shopping](https://img.shields.io/badge/Smart-Shopping-blue?style=for-the-badge&logo=shopping-cart)
 ![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Compatible-red?style=for-the-badge&logo=raspberry-pi)
 ![Python](https://img.shields.io/badge/Python-3.8+-green?style=for-the-badge&logo=python)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-success?style=for-the-badge)
 
+## 🎯 Vision : Netflix pour la Cuisine
+
+**Découverte → Validation → IA personnalisée**
+
+Comme Netflix ou Spotify, Smart Shopping apprend vos goûts culinaires pour vous proposer les recettes parfaites, au bon moment, avec la liste de courses optimisée.
+
 ## ✨ Fonctionnalités
 
-### ✅ Implémentées
-- **📝 Liste de courses dynamique** avec suggestions intelligentes basées sur vos habitudes
-- **🍳 Intégration recettes** (Jow et recettes personnalisées) 
-- **💰 Détection d'erreurs de prix Amazon** (réductions > 90%)
-- **🏪 Optimisation promos locales** (Carrefour, Leclerc, Lidl)
-- **📧 Notifications email automatiques** pour les alertes et promotions
-- **📱 Interface web moderne et responsive** avec React
-- **🤖 Surveillance automatique** des prix et promotions
-- **💾 Sauvegarde automatique** des données
-- **🔒 Sécurité avancée** avec firewall et service systemd
+### ✅ Opérationnelles (v1.0.1)
+- **📝 Liste de courses intelligente** avec suggestions et quantités réelles
+- **🧠 Consolidation automatique** des ingrédients (détecte doublons)
+- **🍳 Gestionnaire de recettes** avec ajout automatique des ingrédients
+- **⚡ Recherche recettes** par type de plat (pâtes, wraps, burger, salade...)
+- **📱 Interface React moderne** et responsive
+- **🔄 Gestion quantités avancée** avec unités automatiques
+- **💾 Base de données locale** SQLite sécurisée
+- **🌐 Accès réseau** depuis tous vos appareils
 
-### 🚀 Fonctionnalités avancées
-- **🧠 IA de suggestions** qui apprend de vos habitudes d'achat
-- **📊 Statistiques détaillées** de vos courses et économies
-- **🔄 Synchronisation temps réel** entre tous vos appareils
-- **📈 Analyse des tendances** de prix sur plusieurs semaines
-- **🎯 Recommandations personnalisées** basées sur vos préférences
+### 🚀 Prochainement (v1.1 - Découverte)
+- **🔍 Onglet "Découvrir"** pour explorer de nouvelles recettes
+- **❤️ Système de validation** (J'aime/Pas intéressé)
+- **🕷️ Scraping Marmiton/Jow** pour recettes réelles
+- **📚 Base personnelle** de recettes validées uniquement
+
+### 🤖 Roadmap IA (v1.2-1.3)
+- **🔎 Recherche par ingrédients** multiples
+- **🧠 Recommandations personnalisées** basées sur vos habitudes
+- **📈 Optimisation courses** intelligente
+- **🎯 Suggestions contextuelles** (rapide en semaine, élaboré le weekend)
 
 ## 🏃‍♂️ Installation rapide
 
@@ -33,70 +43,6 @@ Assistant intelligent pour optimiser vos courses et détecter les erreurs de pri
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/RaphHerve/smart_shopping/main/install.sh | bash
-```
-
-### Installation manuelle
-
-1. **Prérequis système:**
-   ```bash
-   sudo apt update && sudo apt upgrade -y
-   sudo apt install python3 python3-pip python3-venv nginx git sqlite3 curl
-   ```
-
-2. **Cloner le projet:**
-   ```bash
-   git clone https://github.com/RaphHerve/smart_shopping.git
-   cd smart_shopping
-   ```
-
-3. **Configuration de l'environnement:**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-
-4. **Configuration des variables d'environnement:**
-   ```bash
-   cp .env.example .env
-   # Éditer .env avec vos paramètres
-   ```
-
-5. **Démarrage:**
-   ```bash
-   python app.py
-   ```
-
-## 🔧 Configuration
-
-### Configuration Email
-
-Pour recevoir les notifications, configurez votre compte Gmail :
-
-1. Allez sur [Google App Passwords](https://myaccount.google.com/apppasswords)
-2. Générez un nouveau mot de passe d'application
-3. Modifiez le fichier `.env` :
-   ```bash
-   GMAIL_EMAIL=votre-email@gmail.com
-   GMAIL_APP_PASSWORD=votre-mot-de-passe-application
-   ```
-
-### Configuration avancée
-
-Le fichier `.env` permet de personnaliser :
-
-```env
-# Surveillance des prix
-PRICE_CHECK_INTERVAL_HOURS=2
-MAX_DISCOUNT_THRESHOLD=90.0
-
-# Notifications
-ENABLE_PRICE_ALERTS=true
-ENABLE_PROMOTION_ALERTS=true
-
-# Performance
-SELENIUM_HEADLESS=true
-MAX_CONCURRENT_REQUESTS=5
 ```
 
 ## 📱 Utilisation
@@ -107,426 +53,164 @@ Accédez à l'interface via :
 - **Local :** http://localhost
 - **Réseau local :** http://[IP-de-votre-Pi]
 
-### Fonctionnalités principales
+### ✨ Nouvelles fonctionnalités
 
-#### 📝 Liste de courses
-- ➕ Ajout d'articles avec catégories automatiques
-- ✅ Marquage des articles achetés
-- 🔄 Suggestions intelligentes basées sur l'historique
-- 📊 Statistiques de vos habitudes d'achat
+#### 🧠 Consolidation intelligente
+- **Détection automatique** des doublons (spaghetti + pennes = pâtes)
+- **Calcul quantités** cumulées (200g + 300g = 500g pâtes)
+- **Badges visuels** "CONSOLIDÉ" dans l'interface
+- **Normalisation** des noms d'ingrédients
 
-#### 🍳 Gestion des recettes
-- 📖 Ajout de recettes personnalisées
-- 🔗 Intégration avec l'API Jow
-- 🛒 Ajout automatique des ingrédients à la liste
-- 👥 Calcul des portions et ajustement des quantités
+#### 🍳 Recherche recettes avancée
+- **10+ types de plats** supportés (wraps, burger, salade, curry...)
+- **Ingrédients réalistes** avec quantités adaptées
+- **Génération dynamique** selon votre recherche
+- **Quantités modifiables** avant ajout à la liste
 
-#### 💰 Surveillance des prix
-- 🔍 Vérification automatique toutes les 2 heures
-- 🚨 Alertes pour les réductions > 90%
-- 📧 Notifications email instantanées
-- 📈 Historique des prix et tendances
+#### 📊 Gestion quantités
+- **Unités automatiques** (g, kg, ml, l, cuillères, pincées...)
+- **Conversion intelligente** entre unités compatibles  
+- **Quantités décimales** pour précision (250.5g)
+- **Affichage optimisé** (1500g → 1.5kg)
 
-#### 🏪 Promotions locales
-- 🔄 Surveillance quotidienne (Carrefour, Leclerc, Lidl)
-- 📊 Comparaison des prix entre magasins
-- 📅 Suivi des dates de validité
-- 🎯 Recommandations personnalisées
+## 🏗️ Architecture Technique
 
-## 🏗️ Architecture
-
+### Backend Intelligent
 ```
-Smart Shopping Assistant
-├── 🐍 Backend (Python Flask)
-│   ├── app.py - Application principale
-│   ├── Database Manager - Gestion SQLite
-│   ├── Price Monitor - Surveillance prix
-│   ├── Recipe Manager - Gestion recettes
-│   └── Notification Manager - Emails
-├── 🌐 Frontend (React)
-│   ├── Interface responsive
-│   ├── Composants modulaires
-│   └── Real-time updates
-├── 🗄️ Base de données (SQLite)
-│   ├── shopping_list - Liste de courses
-│   ├── recipes - Recettes
-│   ├── price_alerts - Alertes prix
-│   └── local_promotions - Promotions
-└── ⚙️ Infrastructure
-    ├── Nginx - Reverse proxy
-    ├── Systemd - Service daemon
-    ├── Cron - Tâches planifiées
-    └── UFW - Firewall
+📊 Consolidation Engine
+├── Normalisation noms ingrédients
+├── Détection doublons avancée  
+├── Conversion unités automatique
+└── Calcul quantités cumulées
+
+🔍 Scraper Engine  
+├── Jow intelligent (10+ types plats)
+├── Génération recettes dynamique
+├── Parser ingrédients automatique
+└── Support Marmiton (à venir)
+
+💾 Base de Données Étendue
+├── Quantités décimales (quantity_decimal)
+├── Unités standardisées (unit)
+├── Source recettes (recipe_source)  
+└── Cache recettes optimisé
 ```
 
-## 📊 API Endpoints
+## 📊 API Endpoints Avancés
 
-### Liste de courses
+### Nouvelles routes intelligentes
 ```http
-GET    /api/shopping-list          # Récupérer la liste
-POST   /api/shopping-list          # Ajouter un article
-PUT    /api/shopping-list/{id}     # Modifier un article
-DELETE /api/shopping-list/{id}     # Supprimer un article
+POST   /api/jow/search-recipes           # Recherche recettes intelligente
+POST   /api/intelligent/consolidate-and-add # Ajout avec consolidation
+GET    /api/intelligent/suggestions      # Suggestions personnalisées
+POST   /api/intelligent/consolidate      # Consolidation pure
 ```
 
-### Recettes
-```http
-GET    /api/recipes                # Récupérer les recettes
-POST   /api/recipes                # Ajouter une recette
-POST   /api/recipes/{id}/add-to-list # Ajouter à la liste
+### Tests en ligne de commande
+```bash
+# Test recherche wraps
+curl -X POST http://localhost:5000/api/jow/search-recipes \
+  -H "Content-Type: application/json" \
+  -d '{"query": "wraps", "limit": 2}'
+
+# Test consolidation
+curl -X POST http://localhost:5000/api/intelligent/consolidate-and-add \
+  -H "Content-Type: application/json" \
+  -d '{"recipe": {"name": "Test", "ingredients": [{"name": "pâtes", "quantity": 400, "unit": "g"}]}}'
 ```
 
-### Prix et promotions
-```http
-GET    /api/price-alerts           # Récupérer les alertes
-GET    /api/promotions             # Récupérer les promotions
-POST   /api/check-prices           # Vérification manuelle
-POST   /api/check-promotions       # Vérification manuelle
-```
+## 🚀 Nouveautés v1.0.1 (11 juin 2025)
 
-## 🛠️ Développement
+### ✅ Réalisé
+- **🧠 Algorithme consolidation** des ingrédients opérationnel
+- **🔍 Scraper Jow intelligent** avec 10+ types de plats
+- **📊 Schema BDD étendu** pour quantités/unités réelles
+- **⚡ Parser ingrédients** automatique depuis texte
+- **🔄 Conversion unités** automatique (kg↔g, l↔ml)
+- **✨ Interface quantités** modifiables en temps réel
 
-### Structure du projet
+### 🧪 Tests validés
+- ✅ Recherche "wraps" → Wrap au poulet, Wrap végétarien, Wrap saumon
+- ✅ Recherche "burger" → Burger bœuf, Burger poulet avec bons ingrédients  
+- ✅ Consolidation pâtes : spaghetti + tagliatelles = pâtes consolidées
+- ✅ Quantités cumulées : 400g + 300g = 700g automatiquement
 
+## 🎯 Prochaines Étapes
+
+### Phase 1 - Système Découverte (3 semaines)
+1. **Onglet "Découvrir"** séparé de "Mes Recettes"
+2. **Système validation** ❤️ J'aime / ❌ Pas intéressé
+3. **Scraper Marmiton** extension du système actuel
+4. **Base recettes personnelles** enrichie
+
+### Phase 2 - Recherche Intelligente (1 mois)  
+1. **Input multiple ingrédients** ["saumon", "courgettes"] 
+2. **Score de pertinence** selon ingrédients disponibles
+3. **Filtres avancés** (temps, difficulté, type cuisine)
+4. **"Scan frigo virtuel"** pour suggestions
+
+### Phase 3 - IA Prédictive (2-3 mois)
+1. **Machine Learning** sur vos habitudes culinaires
+2. **Recommandations contextuelles** (lundi = rapide, weekend = élaboré)
+3. **Optimisation courses** (3 recettes utilisent des tomates)
+4. **Suggestions automatiques** façon Netflix
+
+## 🔧 Développement & Contribution
+
+### Structure étendue
 ```
 smart_shopping/
-├── app.py                 # Application Flask principale
-├── templates/
-│   └── index.html        # Interface React
-├── static/
-│   ├── css/             # Styles personnalisés
-│   ├── js/              # Scripts supplémentaires
-│   └── images/          # Images et icônes
-├── logs/                # Fichiers de log
-├── backups/             # Sauvegardes automatiques
-├── requirements.txt     # Dépendances Python
-├── .env                # Variables d'environnement
-└── install.sh          # Script d'installation
+├── app.py                          # Flask principal
+├── jow_scraper_intelligent.py      # Scraper recettes intelligent  
+├── smart_shopping_intelligent.py   # Engine consolidation
+├── templates/index.html            # Interface React complète
+├── fix_jow_real_api.py            # Scripts de migration
+└── smart_shopping.db              # Base étendue
 ```
 
-### Tests et développement
-
+### Développement local
 ```bash
-# Mode développement
-export FLASK_ENV=development
-export FLASK_DEBUG=True
-python app.py
-
-# Tests (à implémenter)
-python -m pytest tests/
-
-# Linting
-flake8 app.py
-black app.py
-```
-
-## 📈 Monitoring
-
-### Logs système
-```bash
-# Logs de l'application
-sudo journalctl -u smart-shopping -f
-
-# Logs Nginx
-sudo tail -f /var/log/nginx/smart-shopping.*.log
-
-# Logs des tâches cron
-tail -f /opt/smart-shopping/logs/backup.log
-```
-
-### Métriques
-- 📊 Nombre d'articles en liste
-- 🎯 Alertes de prix détectées
-- 🏪 Promotions trouvées
-- 📧 Emails envoyés
-- 💾 Taille de la base de données
-
-## 🔐 Sécurité
-
-### Mesures implémentées
-- 🔒 **Firewall UFW** configuré automatiquement
-- 🛡️ **Service systemd** avec restrictions de sécurité
-- 🔐 **Variables d'environnement** pour les secrets
-- 📝 **Logs sécurisés** avec rotation automatique
-- 🚫 **Pas de stockage des mots de passe** en clair
-
-### Bonnes pratiques
-- 🔑 Utilisez toujours des mots de passe d'application Gmail
-- 🔄 Changez régulièrement les clés secrètes
-- 📊 Surveillez les logs pour les accès suspects
-- 💾 Effectuez des sauvegardes régulières
-
-## 💾 Sauvegarde et restauration
-
-### Sauvegarde automatique
-- 📅 **Quotidienne à 3h** du matin
-- 💿 **Base de données SQLite** complète
-- ⚙️ **Configuration** (.env, requirements.txt)
-- 🗂️ **Rétention 30 jours** automatique
-
-### Sauvegarde manuelle
-```bash
-# Sauvegarde complète
-/opt/smart-shopping/backup.sh
-
-# Sauvegarde base de données uniquement
-sqlite3 /opt/smart-shopping/smart_shopping.db ".backup backup_$(date +%Y%m%d).db"
-
-# Sauvegarde configuration
-tar -czf config_backup.tar.gz /opt/smart-shopping/.env /opt/smart-shopping/requirements.txt
-```
-
-### Restauration
-```bash
-# Arrêter l'application
-sudo systemctl stop smart-shopping
-
-# Restaurer la base de données
-sqlite3 /opt/smart-shopping/smart_shopping.db ".restore /path/to/backup.db"
-
-# Redémarrer l'application
-sudo systemctl start smart-shopping
-```
-
-## 🔧 Maintenance
-
-### Commandes utiles
-
-```bash
-# Statut des services
-sudo systemctl status smart-shopping nginx
-
-# Redémarrage
-sudo systemctl restart smart-shopping
-
-# Mise à jour des dépendances
-cd /opt/smart-shopping
+# Mode développement avec nouvelles fonctionnalités
+cd ~/smart_shopping
 source venv/bin/activate
-pip install --upgrade -r requirements.txt
-sudo systemctl restart smart-shopping
 
-# Nettoyage des logs
-sudo journalctl --vacuum-time=30d
+# Test consolidation en direct
+python3 -c "
+from smart_shopping_intelligent import IngredientManager
+manager = IngredientManager()
+manager.add_ingredient('spaghetti', 400, 'g', 'recipe1', 'Carbonara')  
+manager.add_ingredient('pâtes', 300, 'g', 'recipe2', 'Bolognaise')
+print(manager.consolidate_shopping_list())
+"
 
-# Vérification de l'espace disque
-df -h /opt/smart-shopping
+# Test scraper intelligent
+python3 -c "
+from jow_scraper_intelligent import intelligent_jow_scraper
+recipes = intelligent_jow_scraper.search_recipes('wraps', 2)
+for r in recipes: print(f'{r[\"name\"]} - {len(r[\"ingredients\"])} ingrédients')
+"
 ```
 
-### Mise à jour de l'application
+## 🌟 Vision Produit
 
-```bash
-# Télécharger la dernière version
-cd /opt/smart-shopping
-git pull origin main
+### 🎯 Objectif Final
+**Devenir le "Netflix de la cuisine"** - Une IA qui comprend vos goûts, propose les bonnes recettes au bon moment, et optimise automatiquement vos courses.
 
-# Mettre à jour les dépendances
-source venv/bin/activate
-pip install -r requirements.txt
-
-# Redémarrer les services
-sudo systemctl restart smart-shopping nginx
-```
-
-## 🐛 Dépannage
-
-### Problèmes courants
-
-#### ❌ L'application ne démarre pas
-```bash
-# Vérifier les logs
-sudo journalctl -u smart-shopping -n 50
-
-# Vérifier la configuration
-cd /opt/smart-shopping
-source venv/bin/activate
-python -c "from app import app; print('Configuration OK')"
-
-# Vérifier les permissions
-ls -la /opt/smart-shopping/
-```
-
-#### ❌ Les emails ne fonctionnent pas
-```bash
-# Tester la configuration email
-curl -X POST http://localhost/api/send-test-email
-
-# Vérifier les variables d'environnement
-grep GMAIL /opt/smart-shopping/.env
-
-# Logs d'erreur email
-sudo journalctl -u smart-shopping | grep -i email
-```
-
-#### ❌ Nginx retourne une erreur 502
-```bash
-# Vérifier que l'app Flask fonctionne
-curl http://127.0.0.1:5000
-
-# Vérifier la configuration Nginx
-sudo nginx -t
-sudo systemctl status nginx
-
-# Redémarrer Nginx
-sudo systemctl restart nginx
-```
-
-#### ❌ Base de données corrompue
-```bash
-# Vérifier l'intégrité
-sqlite3 /opt/smart-shopping/smart_shopping.db "PRAGMA integrity_check;"
-
-# Restaurer depuis une sauvegarde
-cp /opt/smart-shopping/backups/smart_shopping_YYYYMMDD.db /opt/smart-shopping/smart_shopping.db
-sudo systemctl restart smart-shopping
-```
-
-### Diagnostics avancés
-
-```bash
-# Script de diagnostic complet
-cat > diagnostic.sh << 'EOF'
-#!/bin/bash
-echo "=== Diagnostic Smart Shopping ==="
-echo "Date: $(date)"
-echo ""
-
-echo "1. Services:"
-systemctl is-active smart-shopping nginx
-echo ""
-
-echo "2. Ports:"
-netstat -tlnp | grep -E ':80|:5000'
-echo ""
-
-echo "3. Espace disque:"
-df -h /opt/smart-shopping
-echo ""
-
-echo "4. Processus:"
-ps aux | grep -E 'gunicorn|nginx' | head -5
-echo ""
-
-echo "5. Dernières erreurs:"
-journalctl -u smart-shopping --since "1 hour ago" | grep -i error | tail -5
-echo ""
-
-echo "6. Base de données:"
-ls -lh /opt/smart-shopping/smart_shopping.db
-echo ""
-
-echo "7. Configuration réseau:"
-ip addr show | grep inet
-EOF
-
-chmod +x diagnostic.sh
-./diagnostic.sh
-```
-
-## 📈 Performance
-
-### Optimisations implémentées
-
-- **🔄 Pool de connexions** pour la base de données
-- **📦 Compression Gzip** pour les ressources statiques
-- **⚡ Cache navigateur** pour les assets CSS/JS
-- **🎯 Requêtes optimisées** avec index SQLite
-- **🚀 Workers Gunicorn** pour la parallélisation
-
-### Monitoring des performances
-
-```bash
-# Utilisation CPU/Mémoire
-htop
-# ou
-ps aux | grep gunicorn
-
-# Taille de la base de données
-sqlite3 /opt/smart-shopping/smart_shopping.db ".dbinfo"
-
-# Temps de réponse
-curl -w "@curl-format.txt" -o /dev/null -s http://localhost/api/shopping-list
-```
-
-## 🌟 Fonctionnalités futures
-
-### Roadmap v2.1
-- [ ] 📱 **Application mobile** (React Native)
-- [ ] 🔗 **API publique** avec authentification
-- [ ] 🛒 **Intégration caddies connectés**
-- [ ] 🏪 **Géolocalisation** des magasins
-- [ ] 💳 **Suivi des dépenses** et budgets
-
-### Roadmap v2.2
-- [ ] 🤖 **Assistant vocal** (Alexa/Google)
-- [ ] 📊 **Dashboard analytics** avancé
-- [ ] 🔄 **Synchronisation multi-utilisateurs**
-- [ ] 🎯 **IA prédictive** pour les courses
-- [ ] 🌍 **Support multi-langues**
-
-## 🤝 Contribution
-
-### Comment contribuer
-
-1. **Fork** le projet
-2. **Créer** une branche feature (`git checkout -b feature/AmazingFeature`)
-3. **Commit** vos changements (`git commit -m 'Add AmazingFeature'`)
-4. **Push** vers la branche (`git push origin feature/AmazingFeature`)
-5. **Ouvrir** une Pull Request
-
-### Guidelines
-
-- 📝 Suivre les conventions de code Python (PEP 8)
-- ✅ Ajouter des tests pour les nouvelles fonctionnalités
-- 📚 Documenter les changements dans le README
-- 🔄 Tester sur Raspberry Pi avant de soumettre
-
-## 📄 Licence
-
-Distribué sous licence MIT. Voir `LICENSE` pour plus d'informations.
-
-## 👨‍💻 Auteur
-
-**Raphaël Herve** - [@RaphHerve](https://github.com/RaphHerve)
-
-- 📧 Email: rapherv@gmail.com
-- 🐙 GitHub: [RaphHerve/smart_shopping](https://github.com/RaphHerve/smart_shopping)
-
-## 🙏 Remerciements
-
-- [Flask](https://flask.palletsprojects.com/) - Framework web Python
-- [React](https://reactjs.org/) - Bibliothèque JavaScript pour l'interface
-- [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utilitaire
-- [SQLite](https://www.sqlite.org/) - Base de données légère
-- [Nginx](https://nginx.org/) - Serveur web haute performance
-- [Raspberry Pi Foundation](https://www.raspberrypi.org/) - Plateforme matérielle
-
-## 📞 Support
-
-### Canaux de support
-
-- 🐛 **Issues GitHub** : [Ouvrir une issue](https://github.com/RaphHerve/smart_shopping/issues)
-- 💬 **Discussions** : [GitHub Discussions](https://github.com/RaphHerve/smart_shopping/discussions)
-- 📧 **Email** : rapherv@gmail.com
-
-### FAQ
-
-**Q: Puis-je utiliser Smart Shopping sur un autre système que Raspberry Pi ?**
-R: Oui, le code est compatible avec Ubuntu/Debian. Adaptez simplement le script d'installation.
-
-**Q: Les données sont-elles sécurisées ?**
-R: Toutes les données restent locales sur votre Raspberry Pi. Aucune donnée n'est envoyée vers des serveurs externes.
-
-**Q: Puis-je personnaliser les magasins surveillés ?**
-R: Actuellement Carrefour, Leclerc et Lidl sont supportés. D'autres magasins peuvent être ajoutés en modifiant le code.
-
-**Q: L'application fonctionne-t-elle hors ligne ?**
-R: L'interface fonctionne hors ligne, mais la surveillance des prix nécessite une connexion internet.
+### 🚀 Impact Utilisateur
+- **⏰ Gain de temps** : Plus de réflexion "qu'est-ce qu'on mange ?"
+- **💰 Économies** : Optimisation courses + détection promotions
+- **🍽️ Découverte** : Nouvelles recettes adaptées à vos goûts
+- **🧠 Simplicité** : L'IA gère la complexité, vous cuisinez
 
 ---
 
+**Version actuelle :** v1.0.1 - Consolidation Intelligente  
+**Prochaine version :** v1.1 - Système Découverte  
+**Dernière mise à jour :** 11 Juin 2025, 23h30  
+
 <div align="center">
 
-**🛒 Smart Shopping Assistant - Optimisez vos courses avec l'intelligence artificielle! 🛒**
+**🛒 Smart Shopping Assistant - L'IA qui révolutionne vos courses ! 🤖**
 
 [![Made with ❤️](https://img.shields.io/badge/Made%20with-❤️-red.svg)](https://github.com/RaphHerve/smart_shopping)
 [![Raspberry Pi](https://img.shields.io/badge/Optimized%20for-Raspberry%20Pi-red.svg)](https://www.raspberrypi.org/)
