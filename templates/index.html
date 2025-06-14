@@ -152,6 +152,7 @@
             // États pour les formulaires
             const [newItem, setNewItem] = useState('');
             const [newCategory, setNewCategory] = useState('Divers');
+            const [newQuantity, setNewQuantity] = useState(1); // AJOUTÉ pour les quantités
             const [newRecipe, setNewRecipe] = useState({ name: '', ingredients: '' });
             
             // États pour Jow
@@ -351,25 +352,45 @@
                 }
             };
             
-            // Gestion de la liste de courses (fonctions existantes)
-            const addItem = async (name, category = newCategory) => {
+            // Gestion de la liste de courses (fonctions modifiées)
+            const addItem = async (name, category = newCategory, quantity = 1) => { // MODIFIÉ pour gérer quantité
                 if (!name.trim()) return;
                 
                 try {
                     const response = await fetch(`${API_BASE}/api/shopping-list`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: name.trim(), category }),
+                        body: JSON.stringify({ 
+                            name: name.trim(), 
+                            category,
+                            quantity: quantity || 1  // AJOUTÉ
+                        }),
                     });
                     
                     if (response.ok) {
                         await fetchShoppingList();
                         await fetchFrequentItems();
                         setNewItem('');
-                        showToast('Article ajouté avec succès', 'success');
+                        setNewQuantity(1); // AJOUTÉ pour reset quantité
+                        showToast(`Article ajouté${quantity > 1 ? ` (${quantity})` : ''}`, 'success');
                     }
                 } catch (error) {
                     showToast('Erreur lors de l\'ajout', 'error');
+                }
+            };
+            
+            // NOUVELLE FONCTION pour modifier les quantités
+            const updateItemQuantity = async (itemId, newQuantity) => {
+                try {
+                    await fetch(`${API_BASE}/api/shopping-list/${itemId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ quantity: newQuantity })
+                    });
+                    await fetchShoppingList();
+                    showToast(`Quantité mise à jour`, 'success');
+                } catch (error) {
+                    showToast('Erreur lors de la mise à jour', 'error');
                 }
             };
             
@@ -609,6 +630,7 @@
                                             Ajouter un article
                                         </h2>
                                         
+                                        {/* FORMULAIRE MODIFIÉ AVEC QUANTITÉ */}
                                         <div className="flex flex-col sm:flex-row gap-3">
                                             <div className="flex-1">
                                                 <input
@@ -617,7 +639,19 @@
                                                     onChange={(e) => setNewItem(e.target.value)}
                                                     placeholder="Nom de l'article..."
                                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    onKeyPress={(e) => e.key === 'Enter' && addItem(newItem)}
+                                                    onKeyPress={(e) => e.key === 'Enter' && addItem(newItem, newCategory, newQuantity)}
+                                                />
+                                            </div>
+                                            
+                                            {/* NOUVEAU - Input quantité */}
+                                            <div className="w-20">
+                                                <input
+                                                    type="number"
+                                                    value={newQuantity}
+                                                    onChange={(e) => setNewQuantity(parseInt(e.target.value) || 1)}
+                                                    min="1"
+                                                    placeholder="Qté"
+                                                    className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
                                                 />
                                             </div>
                                             
@@ -632,7 +666,7 @@
                                             </select>
                                             
                                             <button
-                                                onClick={() => addItem(newItem)}
+                                                onClick={() => addItem(newItem, newCategory, newQuantity)}
                                                 disabled={!newItem.trim()}
                                                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
                                             >
@@ -659,7 +693,7 @@
                                             </div>
                                         ) : (
                                             <div className="space-y-2">
-                                                {/* Articles non cochés */}
+                                                {/* Articles non cochés - AFFICHAGE MODIFIÉ AVEC QUANTITÉS */}
                                                 {shoppingList.filter(item => !item.checked).map(item => (
                                                     <div key={item.id} className="flex items-center p-3 bg-gray-50 rounded-lg hover-lift">
                                                         <input
@@ -669,9 +703,41 @@
                                                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                                                         />
                                                         <div className="ml-3 flex-1">
-                                                            <div className="font-medium text-gray-900">{item.name}</div>
+                                                            {/* NOUVEAU - Affichage avec quantités et badges */}
+                                                            <div className="flex items-center">
+                                                                <span className="font-medium text-gray-900">{item.name}</span>
+                                                                {item.quantity > 1 && (
+                                                                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
+                                                                        {item.quantity}
+                                                                    </span>
+                                                                )}
+                                                                {/* Badge consolidé si c'est un article de recette avec quantité > 3 */}
+                                                                {item.category === 'Recettes' && item.quantity > 3 && (
+                                                                    <span className="ml-2 consolidated-badge text-white text-xs px-2 py-1 rounded-full">
+                                                                        CONSOLIDÉ
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <div className="text-sm text-gray-500">{item.category}</div>
                                                         </div>
+                                                        
+                                                        {/* NOUVEAU - Contrôles de quantité */}
+                                                        <div className="flex items-center mx-3">
+                                                            <button
+                                                                onClick={() => updateItemQuantity(item.id, Math.max(1, item.quantity - 1))}
+                                                                className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-sm"
+                                                            >
+                                                                -
+                                                            </button>
+                                                            <span className="mx-2 text-sm font-medium w-8 text-center">{item.quantity || 1}</span>
+                                                            <button
+                                                                onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
+                                                                className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-sm"
+                                                            >
+                                                                +
+                                                            </button>
+                                                        </div>
+                                                        
                                                         <button
                                                             onClick={() => removeItem(item.id)}
                                                             className="text-red-500 hover:text-red-700 p-1"
@@ -694,7 +760,14 @@
                                                                     className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
                                                                 />
                                                                 <div className="ml-3 flex-1">
-                                                                    <div className="font-medium text-gray-700 line-through">{item.name}</div>
+                                                                    <div className="font-medium text-gray-700 line-through flex items-center">
+                                                                        {item.name}
+                                                                        {item.quantity > 1 && (
+                                                                            <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                                                                                {item.quantity}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
                                                                     <div className="text-sm text-gray-500">{item.category}</div>
                                                                 </div>
                                                                 <button
