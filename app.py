@@ -3,6 +3,7 @@
 """
 Smart Shopping Assistant - Application Flask principale avec intégration Jow
 Développé pour Raspberry Pi avec toutes les fonctionnalités avancées
+Version corrigée avec consolidation intelligente
 """
 
 import os
@@ -180,6 +181,29 @@ class DatabaseManager:
 
 # Instance du gestionnaire de base de données
 db = DatabaseManager(DB_PATH)
+
+def upgrade_database_schema():
+    """Mise à jour du schéma de base de données pour s'assurer que les quantités sont affichées"""
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            cursor = conn.cursor()
+            
+            # Vérifier si la colonne quantity existe et a une valeur par défaut
+            cursor.execute("PRAGMA table_info(shopping_list)")
+            columns = {col[1]: col for col in cursor.fetchall()}
+            
+            if 'quantity' not in columns:
+                logger.info("Ajout de la colonne quantity")
+                cursor.execute('ALTER TABLE shopping_list ADD COLUMN quantity INTEGER DEFAULT 1')
+            
+            # Mettre à jour les articles existants sans quantité
+            cursor.execute('UPDATE shopping_list SET quantity = 1 WHERE quantity IS NULL OR quantity = 0')
+            
+            conn.commit()
+            logger.info("✅ Schéma de base de données mis à jour")
+            
+    except Exception as e:
+        logger.error(f"Erreur mise à jour schéma: {e}")
 
 class JowAPIService:
     """Service d'intégration avec l'API Jow réelle"""
@@ -385,6 +409,56 @@ class JowAPIService:
     def _get_realistic_mock_recipes(self, query: str, limit: int) -> List[Dict[str, Any]]:
         """Données simulées réalistes basées sur de vraies recettes populaires"""
         mock_recipes_db = {
+            'riz': [
+                {
+                    'id': 'jow_riz_pilaf',
+                    'name': 'Riz pilaf aux légumes',
+                    'servings': 4,
+                    'prepTime': 30,
+                    'ingredients': [
+                        {'name': 'riz basmati', 'quantity': 300, 'unit': 'g'},
+                        {'name': 'bouillon de volaille', 'quantity': 600, 'unit': 'ml'},
+                        {'name': 'oignon', 'quantity': 1, 'unit': 'unité'},
+                        {'name': 'carotte', 'quantity': 1, 'unit': 'unité'},
+                        {'name': 'petits pois', 'quantity': 100, 'unit': 'g'},
+                        {'name': 'beurre', 'quantity': 30, 'unit': 'g'},
+                        {'name': 'curcuma', 'quantity': 1, 'unit': 'cuillère à café'}
+                    ],
+                    'source': 'jow'
+                },
+                {
+                    'id': 'jow_riz_saute',
+                    'name': 'Riz sauté aux crevettes',
+                    'servings': 4,
+                    'prepTime': 25,
+                    'ingredients': [
+                        {'name': 'riz thai', 'quantity': 250, 'unit': 'g'},
+                        {'name': 'crevettes', 'quantity': 300, 'unit': 'g'},
+                        {'name': 'œufs', 'quantity': 2, 'unit': 'unité'},
+                        {'name': 'oignon', 'quantity': 1, 'unit': 'unité'},
+                        {'name': 'ail', 'quantity': 2, 'unit': 'gousse'},
+                        {'name': 'sauce soja', 'quantity': 3, 'unit': 'cuillère à soupe'},
+                        {'name': 'huile de sésame', 'quantity': 1, 'unit': 'cuillère à soupe'}
+                    ],
+                    'source': 'jow'
+                },
+                {
+                    'id': 'jow_risotto',
+                    'name': 'Risotto aux champignons',
+                    'servings': 4,
+                    'prepTime': 35,
+                    'ingredients': [
+                        {'name': 'riz arborio', 'quantity': 320, 'unit': 'g'},
+                        {'name': 'champignons de Paris', 'quantity': 400, 'unit': 'g'},
+                        {'name': 'bouillon de légumes', 'quantity': 1, 'unit': 'l'},
+                        {'name': 'vin blanc sec', 'quantity': 100, 'unit': 'ml'},
+                        {'name': 'parmesan râpé', 'quantity': 80, 'unit': 'g'},
+                        {'name': 'beurre', 'quantity': 50, 'unit': 'g'},
+                        {'name': 'échalote', 'quantity': 1, 'unit': 'unité'}
+                    ],
+                    'source': 'jow'
+                }
+            ],
             'pâtes': [
                 {
                     'id': 'jow_pates_carbonara',
@@ -396,7 +470,7 @@ class JowAPIService:
                         {'name': 'lardons fumés', 'quantity': 200, 'unit': 'g'},
                         {'name': 'œufs entiers', 'quantity': 3, 'unit': 'unité'},
                         {'name': 'parmesan râpé', 'quantity': 100, 'unit': 'g'},
-                        {'name': 'poivre noir', 'quantity': 1, 'unit': 'pincée'}
+                        {'name': 'poivre noir moulu', 'quantity': 1, 'unit': 'pincée'}
                     ],
                     'source': 'jow'
                 },
@@ -531,7 +605,7 @@ class JowAPIService:
 jow_service = JowAPIService()
 
 class ShoppingListManager:
-    """Gestionnaire de la liste de courses avec suggestions intelligentes"""
+    """Gestionnaire de la liste de courses avec suggestions intelligentes - CORRIGÉ"""
     
     def get_shopping_list(self) -> List[Dict]:
         """Récupère la liste de courses actuelle"""
@@ -550,21 +624,23 @@ class ShoppingListManager:
         # Mise à jour des statistiques pour les suggestions
         self._update_frequent_items(name, category)
         
-        logger.info(f"Article ajouté: {name} (catégorie: {category})")
+        logger.info(f"Article ajouté: {name} (catégorie: {category}, quantité: {quantity})")
         return item_id
     
     def add_multiple_items_with_consolidation(self, items: List[Dict], existing_list: List[Dict] = None) -> Dict[str, Any]:
-        """Ajoute plusieurs articles avec consolidation intelligente"""
+        """Ajoute plusieurs articles avec consolidation intelligente - CORRIGÉ"""
         try:
+            logger.info(f"🔄 Consolidation de {len(items)} nouveaux articles")
+            
             if existing_list is None:
                 existing_list = self.get_shopping_list()
             
             # Utiliser le gestionnaire d'ingrédients pour la consolidation
             ingredient_manager = IngredientManager()
             
-            # Ajouter les articles existants
+            # ÉTAPE 1: Ajouter les articles existants NON COCHÉS
             for existing_item in existing_list:
-                if not existing_item.get('checked', False):  # Seulement les non cochés
+                if not existing_item.get('checked', False):
                     ingredient_manager.add_ingredient(
                         existing_item['name'],
                         existing_item.get('quantity', 1),
@@ -573,7 +649,7 @@ class ShoppingListManager:
                         'Liste existante'
                     )
             
-            # Ajouter les nouveaux articles
+            # ÉTAPE 2: Ajouter les nouveaux articles
             for item in items:
                 ingredient_manager.add_ingredient(
                     item['name'],
@@ -583,23 +659,38 @@ class ShoppingListManager:
                     item.get('recipe_name', 'Nouveau')
                 )
             
-            # Consolider
+            # ÉTAPE 3: Consolider tous les ingrédients
             consolidated_list = ingredient_manager.consolidate_shopping_list()
             
-            # Compter les consolidations
-            consolidated_items = sum(1 for item in consolidated_list.values() if item.get('recipeCount', 0) > 1)
-            added_items = len(items)
+            # ÉTAPE 4: Supprimer tous les articles existants non cochés
+            for existing_item in existing_list:
+                if not existing_item.get('checked', False):
+                    self.remove_item(existing_item['id'])
+                    logger.info(f"  🗑️ Supprimé article existant: {existing_item['name']}")
             
-            # Ajouter seulement les nouveaux articles consolidés à la base
+            # ÉTAPE 5: Ajouter les articles consolidés
+            consolidated_items = 0
+            added_items = 0
+            
             for normalized_name, item_data in consolidated_list.items():
-                # Si c'est un nouvel article ou une consolidation
-                if not any(existing['name'].lower().strip() == item_data['name'].lower().strip() 
-                          for existing in existing_list if not existing.get('checked', False)):
-                    self.add_item(
-                        item_data['name'],
-                        'Recettes',
-                        int(item_data['quantity'])
-                    )
+                quantity = int(round(item_data['quantity']))  # Arrondir les quantités
+                
+                # Ajouter l'article consolidé avec la quantité totale
+                self.add_item(
+                    item_data['name'],
+                    'Recettes',
+                    quantity
+                )
+                
+                added_items += 1
+                if item_data.get('recipeCount', 0) > 1:
+                    consolidated_items += 1
+                    logger.info(f"  ✅ Consolidé: {item_data['name']} = {quantity} {item_data['unit']} "
+                              f"(de {item_data['recipeCount']} recettes)")
+                else:
+                    logger.info(f"  ➕ Ajouté: {item_data['name']} = {quantity} {item_data['unit']}")
+            
+            logger.info(f"🎉 Consolidation terminée: {consolidated_items} consolidations, {added_items} articles")
             
             return {
                 'success': True,
@@ -609,7 +700,7 @@ class ShoppingListManager:
             }
             
         except Exception as e:
-            logger.error(f"Erreur consolidation: {e}")
+            logger.error(f"❌ Erreur consolidation: {e}")
             return {'success': False, 'error': str(e)}
     
     def update_item(self, item_id: int, **kwargs) -> bool:
@@ -890,7 +981,7 @@ def add_recipe_to_list(recipe_id):
         logger.error(f"Erreur ajout recette à la liste: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ===== NOUVELLES ROUTES JOW =====
+# ===== ROUTES JOW CORRIGÉES =====
 
 @app.route('/api/jow/search-recipes', methods=['POST'])
 def search_jow_recipes():
@@ -1273,6 +1364,9 @@ def init_sample_data():
 if __name__ == '__main__':
     try:
         logger.info("🚀 Démarrage Smart Shopping Assistant v2.0 avec Jow")
+        
+        # MISE À JOUR DU SCHÉMA DE BASE DE DONNÉES
+        upgrade_database_schema()
         
         # Initialiser les données d'exemple si nécessaire
         init_sample_data()
