@@ -1,21 +1,44 @@
-# Smart Shopping Assistant v2.0 - Requirements Raspberry Pi Optimisés
+# Smart Shopping Assistant v2.0 - Requirements SANS LXML pour Raspberry Pi
+# Version optimisée pour éviter les problèmes de compilation sur ARM
+
+# Core Flask
 Flask==2.3.3
 Flask-CORS==4.0.0
 Flask-Limiter==3.5.0
+Werkzeug>=2.3.0
+
+# Requests et scraping SANS LXML
 requests==2.31.0
 beautifulsoup4==4.12.2
+html5lib>=1.1                 # Parser robuste pour BeautifulSoup
+soupsieve>=2.4               # Sélecteurs CSS pour BeautifulSoup
+
+# Autres dépendances
 schedule==1.2.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 fake-useragent==1.4.0
-python-crontab==3.0.0
-psutil==5.9.6
+python-crontab>=3.0.0
+psutil>=5.9.0
 python-dateutil>=2.8.0
 
-# NOUVELLES DÉPENDANCES v2.0
+# Cache Redis (optionnel)
 redis>=4.5.0
-html5lib>=1.1
-soupsieve>=2.4
 
-# Note: lxml retiré car problématique sur Raspberry Pi
-# beautifulsoup4 utilise html5lib par défaut
+# NOTES IMPORTANTES:
+# ❌ lxml RETIRÉ car compilation difficile sur Raspberry Pi ARM
+# ✅ html5lib ajouté comme parser alternatif robuste
+# ✅ html.parser natif Python utilisé en priorité
+# ✅ Tous les parsers ont des fallbacks dans le code
+
+# PARSERS BEAUTIFLSOUP DISPONIBLES:
+# 1. html.parser (natif Python, toujours disponible)
+# 2. html5lib (installé via requirements, plus robuste)
+# 3. lxml (non installé, évité volontairement)
+
+# Installation sur Raspberry Pi:
+# pip install -r requirements.txt --no-cache-dir
+
+# Test après installation:
+# python3 -c "from bs4 import BeautifulSoup; print('✅ BeautifulSoup OK')"
+# python3 -c "import html5lib; print('✅ html5lib OK')"
