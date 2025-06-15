@@ -1,22 +1,21 @@
-
-# Smart Shopping Assistant v2.0 - Requirements Corrigés
+# Smart Shopping Assistant v2.0 - Requirements Raspberry Pi Optimisés
 Flask==2.3.3
 Flask-CORS==4.0.0
 Flask-Limiter==3.5.0
 requests==2.31.0
 beautifulsoup4==4.12.2
 schedule==1.2.0
-lxml==4.9.3
 python-dotenv==1.0.0
 gunicorn==21.2.0
-selenium==4.15.0
 fake-useragent==1.4.0
 python-crontab==3.0.0
 psutil==5.9.6
 python-dateutil>=2.8.0
-numpy>=1.21.0
 
 # NOUVELLES DÉPENDANCES v2.0
 redis>=4.5.0
 html5lib>=1.1
 soupsieve>=2.4
+
+# Note: lxml retiré car problématique sur Raspberry Pi
+# beautifulsoup4 utilise html5lib par défaut
