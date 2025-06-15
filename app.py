@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Smart Shopping Assistant - Application Flask CORRIGÉE
-- Vrai scraping Jow.fr et Marmiton.fr
-- Gestion intelligente des quantités (pas de doublons)
-- Optimisations performance
+Smart Shopping Assistant - Application Flask CORRIGÉE SANS LXML
+- Configuration Flask-Limiter corrigée
+- Import modules corrigé
+- BeautifulSoup avec html.parser uniquement
 """
 
 import os
@@ -16,7 +16,6 @@ import schedule
 import time
 import requests
 import re
-import redis
 from datetime import datetime, timedelta
 from threading import Thread
 from email.mime.text import MIMEText as MimeText
@@ -33,9 +32,22 @@ from flask_limiter.util import get_remote_address
 from fake_useragent import UserAgent
 from dotenv import load_dotenv
 
-# Import des nouveaux modules corrigés
-from real_jow_marmiton_scraper import unified_recipe_scraper
-from intelligent_quantity_manager import get_ingredient_manager, upgrade_database_schema
+# Import des modules corrigés - CORRECTION DU NOM
+try:
+    from real_jow_marmiton_scraper import unified_recipe_scraper
+    SCRAPER_AVAILABLE = True
+    print("✅ Scraper importé avec succès")
+except ImportError as e:
+    print(f"⚠️  Erreur import scraper: {e}")
+    SCRAPER_AVAILABLE = False
+
+try:
+    from intelligent_quantity_manager import get_ingredient_manager, upgrade_database_schema
+    QUANTITY_MANAGER_AVAILABLE = True
+    print("✅ Gestionnaire quantités importé avec succès")
+except ImportError as e:
+    print(f"⚠️  Erreur import gestionnaire quantités: {e}")
+    QUANTITY_MANAGER_AVAILABLE = False
 
 # Chargement des variables d'environnement
 load_dotenv()
@@ -45,22 +57,23 @@ app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'smart-shopping-secret-key-v2')
 CORS(app)
 
-# Configuration Rate Limiting
+# Configuration Rate Limiting CORRIGÉE
 limiter = Limiter(
-    app,
     key_func=get_remote_address,
+    app=app,
     default_limits=["200 per day", "50 per hour"]
 )
 
-# Configuration Redis pour le cache
+# Configuration Redis pour le cache - avec gestion d'erreur
 try:
+    import redis
     redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
     redis_client.ping()
     CACHE_ENABLED = True
     print("✅ Redis connecté - Cache activé")
-except:
+except Exception as e:
     CACHE_ENABLED = False
-    print("⚠️  Redis non disponible - Cache désactivé")
+    print(f"⚠️  Redis non disponible - Cache désactivé: {e}")
 
 # Configuration des logs
 logging.basicConfig(
@@ -214,7 +227,16 @@ class DatabaseManager:
 
 # Instance du gestionnaire de base de données
 db = DatabaseManager(DB_PATH)
-ingredient_manager = get_ingredient_manager(DB_PATH)
+
+# Initialiser le gestionnaire d'ingrédients si disponible
+if QUANTITY_MANAGER_AVAILABLE:
+    try:
+        ingredient_manager = get_ingredient_manager(DB_PATH)
+        upgrade_database_schema(DB_PATH)
+        print("✅ Gestionnaire d'ingrédients initialisé")
+    except Exception as e:
+        print(f"⚠️  Erreur initialisation gestionnaire: {e}")
+        QUANTITY_MANAGER_AVAILABLE = False
 
 # Décorateur pour le cache Redis
 def cache_result(key_prefix: str, ttl: int = 3600):
@@ -259,29 +281,45 @@ class ShoppingListManager:
         ''')
     
     def add_item(self, name: str, category: str = 'Divers', quantity: float = 1, unit: str = 'unité') -> Dict:
-        """Ajoute un article avec gestion intelligente des quantités"""
+        """Ajoute un article avec gestion intelligente des quantités si disponible"""
         try:
-            result = ingredient_manager.add_or_update_item(
-                name=name,
-                quantity=quantity,
-                unit=unit,
-                category=category
-            )
-            
-            if result['success']:
-                # Mettre à jour les statistiques
+            if QUANTITY_MANAGER_AVAILABLE:
+                result = ingredient_manager.add_or_update_item(
+                    name=name,
+                    quantity=quantity,
+                    unit=unit,
+                    category=category
+                )
+                
+                if result['success']:
+                    # Mettre à jour les statistiques
+                    self._update_frequent_items(name, category)
+                    
+                    # Analytics
+                    self._track_analytics('add_item', {
+                        'name': name,
+                        'category': category,
+                        'quantity': quantity,
+                        'unit': unit,
+                        'action': result.get('action', 'unknown')
+                    })
+                
+                return result
+            else:
+                # Fallback simple sans consolidation
+                item_id = db.execute_update('''
+                    INSERT INTO shopping_list (name, category, quantity, quantity_decimal, unit)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (name, category, int(quantity) if quantity.is_integer() else quantity, quantity, unit))
+                
                 self._update_frequent_items(name, category)
                 
-                # Analytics
-                self._track_analytics('add_item', {
-                    'name': name,
-                    'category': category,
-                    'quantity': quantity,
-                    'unit': unit,
-                    'action': result.get('action', 'unknown')
-                })
-            
-            return result
+                return {
+                    'success': True,
+                    'action': 'created',
+                    'item_id': item_id,
+                    'message': f'Article ajouté: {name}'
+                }
             
         except Exception as e:
             logger.error(f"Erreur ajout article: {e}")
@@ -290,8 +328,8 @@ class ShoppingListManager:
     def update_item(self, item_id: int, **kwargs) -> bool:
         """Met à jour un article de la liste"""
         try:
-            # Gestion spéciale pour les quantités
-            if 'quantity' in kwargs:
+            # Gestion spéciale pour les quantités si disponible
+            if 'quantity' in kwargs and QUANTITY_MANAGER_AVAILABLE:
                 quantity = kwargs.pop('quantity')
                 unit = kwargs.pop('unit', None)
                 
@@ -411,7 +449,7 @@ class RecipeManager:
         return recipe_id
     
     def add_recipe_to_shopping_list(self, recipe_id: int) -> Dict:
-        """Ajoute les ingrédients d'une recette à la liste avec consolidation"""
+        """Ajoute les ingrédients d'une recette à la liste avec consolidation si disponible"""
         try:
             recipe = db.execute_query('''
                 SELECT * FROM recipes WHERE id = ?
@@ -426,28 +464,49 @@ class RecipeManager:
             except:
                 ingredients = []
             
-            # Convertir en format attendu par le gestionnaire
-            recipe_data = {
-                'name': recipe['name'],
-                'ingredients': [
-                    {
-                        'name': ing.strip(),
-                        'quantity': 1,
-                        'unit': 'unité'
-                    } for ing in ingredients
-                ]
-            }
-            
-            # Utiliser le gestionnaire intelligent
-            result = ingredient_manager.add_recipe_ingredients(recipe_data)
-            
-            return {
-                'success': result['success'],
-                'recipe_name': result['recipe_name'],
-                'consolidated_count': result['consolidated_count'],
-                'created_count': result['created_count'],
-                'total_count': result['total_ingredients']
-            }
+            if QUANTITY_MANAGER_AVAILABLE:
+                # Convertir en format attendu par le gestionnaire
+                recipe_data = {
+                    'name': recipe['name'],
+                    'ingredients': [
+                        {
+                            'name': ing.strip(),
+                            'quantity': 1,
+                            'unit': 'unité'
+                        } for ing in ingredients
+                    ]
+                }
+                
+                # Utiliser le gestionnaire intelligent
+                result = ingredient_manager.add_recipe_ingredients(recipe_data)
+                
+                return {
+                    'success': result['success'],
+                    'recipe_name': result['recipe_name'],
+                    'consolidated_count': result['consolidated_count'],
+                    'created_count': result['created_count'],
+                    'total_count': result['total_ingredients']
+                }
+            else:
+                # Fallback simple
+                added_count = 0
+                for ingredient in ingredients:
+                    try:
+                        db.execute_update('''
+                            INSERT INTO shopping_list (name, category, quantity, unit, recipe_sources)
+                            VALUES (?, ?, ?, ?, ?)
+                        ''', (ingredient.strip(), 'Recettes', 1, 'unité', recipe['name']))
+                        added_count += 1
+                    except:
+                        continue
+                
+                return {
+                    'success': True,
+                    'recipe_name': recipe['name'],
+                    'consolidated_count': 0,
+                    'created_count': added_count,
+                    'total_count': len(ingredients)
+                }
             
         except Exception as e:
             logger.error(f"Erreur ajout recette à la liste: {e}")
@@ -456,9 +515,6 @@ class RecipeManager:
 # Instances des gestionnaires
 shopping_manager = ShoppingListManager()
 recipe_manager = RecipeManager()
-
-# Mise à jour du schéma de base de données au démarrage
-upgrade_database_schema(DB_PATH)
 
 # ROUTES API CORRIGÉES
 
@@ -538,12 +594,12 @@ def delete_shopping_item(item_id):
         logger.error(f"Erreur suppression article: {e}")
         return jsonify({'error': str(e)}), 500
 
-# ROUTES JOW CORRIGÉES AVEC VRAI SCRAPING
+# ROUTES JOW CORRIGÉES AVEC GESTION D'ERREUR
 
 @app.route('/api/jow/search-recipes', methods=['POST'])
 @limiter.limit("10 per minute")
 def search_jow_recipes():
-    """API: Recherche RÉELLE de recettes sur Jow.fr et Marmiton.fr"""
+    """API: Recherche RÉELLE de recettes si scraper disponible"""
     try:
         data = request.get_json()
         query = data.get('query', '')
@@ -551,6 +607,33 @@ def search_jow_recipes():
         
         if not query.strip():
             return jsonify({'error': 'Query de recherche requise'}), 400
+        
+        if not SCRAPER_AVAILABLE:
+            # Fallback simple si scraper indisponible
+            fallback_recipes = [
+                {
+                    'id': f'fallback_{query}',
+                    'name': f'Recette au {query}',
+                    'servings': 4,
+                    'prepTime': 30,
+                    'ingredients': [
+                        {'name': query, 'quantity': 300, 'unit': 'g'},
+                        {'name': 'huile d\'olive', 'quantity': 2, 'unit': 'cuillère à soupe'}
+                    ],
+                    'source': 'fallback'
+                }
+            ]
+            
+            return jsonify({
+                'success': True,
+                'data': {
+                    'recipes': fallback_recipes,
+                    'count': len(fallback_recipes),
+                    'query': query,
+                    'source': 'fallback',
+                    'cached_at': datetime.now().isoformat()
+                }
+            })
         
         # Vérifier le cache Redis d'abord
         cache_key = f"recipe_search:{query}:{limit}"
@@ -599,7 +682,7 @@ def search_jow_recipes():
 @app.route('/api/intelligent/consolidate-and-add', methods=['POST'])
 @limiter.limit("20 per minute")
 def consolidate_and_add_recipe():
-    """API: Ajoute une recette avec consolidation intelligente"""
+    """API: Ajoute une recette avec consolidation intelligente si disponible"""
     try:
         data = request.get_json()
         recipe = data.get('recipe')
@@ -610,27 +693,58 @@ def consolidate_and_add_recipe():
                 'error': 'Recette avec ingrédients requise'
             }), 400
         
-        # Utiliser le gestionnaire intelligent
-        result = ingredient_manager.add_recipe_ingredients(recipe)
-        
-        if result['success']:
+        if QUANTITY_MANAGER_AVAILABLE:
+            # Utiliser le gestionnaire intelligent
+            result = ingredient_manager.add_recipe_ingredients(recipe)
+            
+            if result['success']:
+                return jsonify({
+                    'success': True,
+                    'data': {
+                        'recipe_name': result['recipe_name'],
+                        'total_ingredients': result['total_ingredients'],
+                        'consolidated_count': result['consolidated_count'],
+                        'created_count': result['created_count'],
+                        'actions': result['actions']
+                    },
+                    'message': f"Recette {result['recipe_name']} ajoutée avec {result['consolidated_count']} consolidations"
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': 'Erreur lors de l\'ajout',
+                    'details': result.get('errors', [])
+                }), 500
+        else:
+            # Fallback simple
+            added_count = 0
+            for ingredient in recipe.get('ingredients', []):
+                try:
+                    db.execute_update('''
+                        INSERT INTO shopping_list (name, category, quantity, unit, recipe_sources)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (
+                        ingredient.get('name', ''),
+                        'Recettes',
+                        ingredient.get('quantity', 1),
+                        ingredient.get('unit', 'unité'),
+                        recipe.get('name', 'Recette')
+                    ))
+                    added_count += 1
+                except:
+                    continue
+            
             return jsonify({
                 'success': True,
                 'data': {
-                    'recipe_name': result['recipe_name'],
-                    'total_ingredients': result['total_ingredients'],
-                    'consolidated_count': result['consolidated_count'],
-                    'created_count': result['created_count'],
-                    'actions': result['actions']
+                    'recipe_name': recipe.get('name', 'Recette'),
+                    'total_ingredients': len(recipe.get('ingredients', [])),
+                    'consolidated_count': 0,
+                    'created_count': added_count,
+                    'actions': []
                 },
-                'message': f"Recette {result['recipe_name']} ajoutée avec {result['consolidated_count']} consolidations"
+                'message': f"Recette {recipe.get('name', '')} ajoutée ({added_count} ingrédients)"
             })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Erreur lors de l\'ajout',
-                'details': result.get('errors', [])
-            }), 500
             
     except Exception as e:
         logger.error(f"Erreur consolidation et ajout: {e}")
@@ -685,6 +799,16 @@ def add_recipe_to_list(recipe_id):
         logger.error(f"Erreur ajout recette à la liste: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/frequent-items', methods=['GET'])
+def get_frequent_items():
+    """API: Récupère les suggestions d'articles fréquents"""
+    try:
+        items = shopping_manager.get_suggestions()
+        return jsonify(items)
+    except Exception as e:
+        logger.error(f"Erreur récupération suggestions: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     """API: Récupère les statistiques de l'application"""
@@ -696,7 +820,9 @@ def get_stats():
             'frequent_items': len(db.execute_query('SELECT id FROM frequent_items')),
             'cache_status': 'enabled' if CACHE_ENABLED else 'disabled',
             'database_size': os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0,
-            'scraping_sources': ['jow.fr', 'marmiton.org']
+            'scraping_sources': ['jow.fr', 'marmiton.org'] if SCRAPER_AVAILABLE else ['fallback'],
+            'scraper_available': SCRAPER_AVAILABLE,
+            'quantity_manager_available': QUANTITY_MANAGER_AVAILABLE
         }
         
         return jsonify(stats)
@@ -728,14 +854,14 @@ def health_check():
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now().isoformat(),
-            'version': '2.0.0-corrected',
+            'version': '2.0.0-fixed',
             'database': db_status,
             'cache': cache_status,
-            'scraping': 'real',
+            'scraping': 'real' if SCRAPER_AVAILABLE else 'fallback',
             'features': {
-                'intelligent_quantities': True,
-                'real_scraping': True,
-                'consolidation': True,
+                'intelligent_quantities': QUANTITY_MANAGER_AVAILABLE,
+                'real_scraping': SCRAPER_AVAILABLE,
+                'consolidation': QUANTITY_MANAGER_AVAILABLE,
                 'caching': CACHE_ENABLED
             }
         })
@@ -760,9 +886,9 @@ def ratelimit_handler(e):
 
 if __name__ == '__main__':
     try:
-        logger.info("🚀 Démarrage Smart Shopping Assistant v2.0 CORRIGÉ")
-        logger.info("✅ Vrai scraping Jow.fr + Marmiton.fr activé")
-        logger.info("✅ Gestion intelligente des quantités activée")
+        logger.info("🚀 Démarrage Smart Shopping Assistant v2.0 SANS LXML")
+        logger.info(f"✅ Scraper réel: {'Activé' if SCRAPER_AVAILABLE else 'Désactivé (fallback)'}")
+        logger.info(f"✅ Gestion quantités: {'Activée' if QUANTITY_MANAGER_AVAILABLE else 'Désactivée (fallback)'}")
         logger.info(f"✅ Cache Redis: {'Activé' if CACHE_ENABLED else 'Désactivé'}")
         
         logger.info("🌐 Application accessible sur http://192.168.1.177")
