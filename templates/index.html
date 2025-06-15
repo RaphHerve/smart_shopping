@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Shopping Assistant</title>
+    <title>Smart Shopping Assistant v2.0 - Corrigé</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -20,87 +20,128 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
         
-        .glass-effect {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .jow-style-ingredient {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 12px;
+            transition: all 0.2s ease;
         }
         
-        .hover-lift {
-            transition: transform 0.2s ease-in-out;
+        .jow-style-ingredient:hover {
+            background: #e9ecef;
+            transform: translateY(-1px);
         }
         
-        .hover-lift:hover {
-            transform: translateY(-2px);
+        .quantity-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 4px 8px;
         }
         
-        .slide-in {
-            animation: slideIn 0.3s ease-out;
+        .quantity-btn {
+            width: 24px;
+            height: 24px;
+            border: none;
+            background: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
         }
         
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .quantity-btn:hover {
+            background: #e9ecef;
         }
         
-        .pulse-dot {
+        .quantity-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .quantity-input {
+            width: 60px;
+            text-align: center;
+            border: none;
+            background: transparent;
+            font-weight: 500;
+        }
+        
+        .unit-selector {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .consolidated-badge {
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
             animation: pulse 2s infinite;
         }
         
-        @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0.5;
-            }
+        .smart-match-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
         }
         
-        .notification {
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .recipe-card-jow {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .recipe-card-jow:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
             animation: slideInRight 0.3s ease-out;
         }
         
         @keyframes slideInRight {
-            from {
-                opacity: 0;
-                transform: translateX(100%);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(0);
-            }
-        }
-
-        .jow-ingredient-item {
-            transition: all 0.2s ease;
-        }
-
-        .jow-ingredient-item:hover {
-            background-color: #f8f9fa;
-        }
-
-        .quantity-input {
-            width: 70px;
-        }
-
-        .unit-select {
-            width: 100px;
-        }
-
-        .consolidated-badge {
-            background: linear-gradient(45deg, #fbbf24, #f59e0b);
-            animation: shimmer 2s infinite;
-        }
-
-        @keyframes shimmer {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
         }
     </style>
 </head>
@@ -110,7 +151,7 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
         
-        // Composant de notification toast
+        // Composant Toast pour les notifications
         const Toast = ({ message, type = 'info', onClose }) => {
             useEffect(() => {
                 const timer = setTimeout(onClose, 4000);
@@ -125,8 +166,8 @@
             }[type];
             
             return (
-                <div className={`fixed top-4 right-4 ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg notification z-50`}>
-                    <div className="flex items-center">
+                <div className={`notification-toast ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg`}>
+                    <div className="flex items-center justify-between">
                         <span>{message}</span>
                         <button onClick={onClose} className="ml-3 text-white hover:text-gray-200">
                             <i className="fas fa-times"></i>
@@ -136,15 +177,265 @@
             );
         };
         
-        // Composant principal
-        const SmartShoppingApp = () => {
-            // États principaux
+        // Composant Sélecteur de Quantité Style Jow
+        const QuantitySelector = ({ quantity, unit, onQuantityChange, onUnitChange, disabled = false }) => {
+            const units = ['g', 'kg', 'ml', 'l', 'cl', 'unité', 'pièce', 'cuillère à soupe', 'cuillère à café', 'tasse', 'pincée'];
+            
+            const handleDecrease = () => {
+                if (quantity > 0.1) {
+                    onQuantityChange(Math.max(0.1, quantity - (quantity >= 1 ? 1 : 0.1)));
+                }
+            };
+            
+            const handleIncrease = () => {
+                onQuantityChange(quantity + (quantity >= 1 ? 1 : 0.1));
+            };
+            
+            const handleInputChange = (e) => {
+                const value = parseFloat(e.target.value) || 0;
+                onQuantityChange(Math.max(0.1, value));
+            };
+            
+            return (
+                <div className="flex items-center gap-2">
+                    <div className="quantity-selector">
+                        <button 
+                            className="quantity-btn"
+                            onClick={handleDecrease}
+                            disabled={disabled || quantity <= 0.1}
+                        >
+                            <i className="fas fa-minus text-xs"></i>
+                        </button>
+                        
+                        <input
+                            type="number"
+                            className="quantity-input"
+                            value={quantity % 1 === 0 ? Math.round(quantity) : quantity.toFixed(1)}
+                            onChange={handleInputChange}
+                            disabled={disabled}
+                            step="0.1"
+                            min="0.1"
+                        />
+                        
+                        <button 
+                            className="quantity-btn"
+                            onClick={handleIncrease}
+                            disabled={disabled}
+                        >
+                            <i className="fas fa-plus text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <select
+                        className="unit-selector"
+                        value={unit}
+                        onChange={(e) => onUnitChange(e.target.value)}
+                        disabled={disabled}
+                    >
+                        {units.map(u => (
+                            <option key={u} value={u}>{u}</option>
+                        ))}
+                    </select>
+                </div>
+            );
+        };
+        
+        // Composant Article de Liste Style Jow
+        const ShoppingListItem = ({ item, onUpdate, onRemove, onToggle }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [editQuantity, setEditQuantity] = useState(item.quantity || 1);
+            const [editUnit, setEditUnit] = useState(item.unit || 'unité');
+            
+            const handleSaveEdit = () => {
+                onUpdate(item.id, { quantity: editQuantity, unit: editUnit });
+                setIsEditing(false);
+            };
+            
+            const isConsolidated = item.recipe_sources && item.recipe_sources.includes(',');
+            
+            return (
+                <div className={`jow-style-ingredient ${item.checked ? 'opacity-60' : ''}`}>
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                            <input
+                                type="checkbox"
+                                checked={item.checked}
+                                onChange={(e) => onToggle(item.id, e.target.checked)}
+                                className="w-5 h-5 text-green-600 rounded focus:ring-green-500"
+                            />
+                            
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className={`font-medium ${item.checked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                                        {item.name}
+                                    </span>
+                                    
+                                    {isConsolidated && (
+                                        <span className="consolidated-badge">
+                                            CONSOLIDÉ
+                                        </span>
+                                    )}
+                                    
+                                    {item.quantity > 3 && (
+                                        <span className="smart-match-badge">
+                                            SMART
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                <div className="text-sm text-gray-500">
+                                    {item.category}
+                                    {item.recipe_sources && (
+                                        <span className="ml-2">• {item.recipe_sources}</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                            {isEditing ? (
+                                <div className="flex items-center gap-2">
+                                    <QuantitySelector
+                                        quantity={editQuantity}
+                                        unit={editUnit}
+                                        onQuantityChange={setEditQuantity}
+                                        onUnitChange={setEditUnit}
+                                    />
+                                    <button
+                                        onClick={handleSaveEdit}
+                                        className="text-green-600 hover:text-green-800"
+                                    >
+                                        <i className="fas fa-check"></i>
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="text-gray-400 hover:text-gray-600"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="text-blue-600 hover:text-blue-800 px-2 py-1 rounded"
+                                    >
+                                        {item.quantity_decimal || item.quantity} {item.unit || 'unité'}
+                                    </button>
+                                    
+                                    <button
+                                        onClick={() => onRemove(item.id)}
+                                        className="text-red-500 hover:text-red-700 p-1"
+                                    >
+                                        <i className="fas fa-trash"></i>
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // Composant Recette Jow Style
+        const JowRecipeCard = ({ recipe, onAddToList, loading }) => {
+            const [localIngredients, setLocalIngredients] = useState(
+                recipe.ingredients?.map(ing => ({
+                    ...ing,
+                    quantity: ing.quantity || 1,
+                    unit: ing.unit || 'unité'
+                })) || []
+            );
+            
+            const updateIngredient = (index, field, value) => {
+                const updated = [...localIngredients];
+                updated[index] = { ...updated[index], [field]: value };
+                setLocalIngredients(updated);
+            };
+            
+            const handleAddToList = () => {
+                const updatedRecipe = {
+                    ...recipe,
+                    ingredients: localIngredients
+                };
+                onAddToList(updatedRecipe);
+            };
+            
+            return (
+                <div className="recipe-card-jow">
+                    <div className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                            <div>
+                                <h4 className="font-semibold text-gray-900 line-clamp-2">{recipe.name}</h4>
+                                <div className="flex items-center gap-4 text-sm text-gray-500 mt-1">
+                                    <span><i className="fas fa-users mr-1"></i>{recipe.servings} portions</span>
+                                    <span><i className="fas fa-clock mr-1"></i>{recipe.prepTime} min</span>
+                                </div>
+                            </div>
+                            <span className={`text-xs px-2 py-1 rounded ${
+                                recipe.source === 'jow' ? 'bg-purple-100 text-purple-800' : 'bg-orange-100 text-orange-800'
+                            }`}>
+                                {recipe.source === 'jow' ? 'Jow' : 'Marmiton'}
+                            </span>
+                        </div>
+                        
+                        <div className="mb-4">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">
+                                Ingrédients (modifiables) :
+                            </h5>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                                {localIngredients.map((ingredient, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-gray-50 rounded p-2">
+                                        <span className="text-sm text-gray-700 flex-1 mr-2">
+                                            {ingredient.name}
+                                        </span>
+                                        <QuantitySelector
+                                            quantity={ingredient.quantity}
+                                            unit={ingredient.unit}
+                                            onQuantityChange={(value) => updateIngredient(idx, 'quantity', value)}
+                                            onUnitChange={(value) => updateIngredient(idx, 'unit', value)}
+                                            disabled={loading}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        
+                        <button
+                            onClick={handleAddToList}
+                            disabled={loading}
+                            className={`w-full py-3 rounded-lg font-medium transition-colors ${
+                                loading 
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                    : recipe.source === 'jow' 
+                                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                        : 'bg-orange-600 hover:bg-orange-700 text-white'
+                            }`}
+                        >
+                            {loading ? (
+                                <>
+                                    <i className="fas fa-spinner fa-spin mr-2"></i>
+                                    Ajout en cours...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fas fa-magic mr-2"></i>
+                                    Ajouter avec consolidation intelligente
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+        
+        // Composant Principal Corrigé
+        const SmartShoppingAppCorrected = () => {
+            // États
             const [activeTab, setActiveTab] = useState('shopping');
             const [shoppingList, setShoppingList] = useState([]);
             const [frequentItems, setFrequentItems] = useState([]);
             const [recipes, setRecipes] = useState([]);
-            const [priceAlerts, setPriceAlerts] = useState([]);
-            const [promotions, setPromotions] = useState([]);
             const [stats, setStats] = useState({});
             const [loading, setLoading] = useState(false);
             const [toast, setToast] = useState(null);
@@ -152,7 +443,8 @@
             // États pour les formulaires
             const [newItem, setNewItem] = useState('');
             const [newCategory, setNewCategory] = useState('Divers');
-            const [newQuantity, setNewQuantity] = useState(1); // AJOUTÉ pour les quantités
+            const [newQuantity, setNewQuantity] = useState(1);
+            const [newUnit, setNewUnit] = useState('unité');
             const [newRecipe, setNewRecipe] = useState({ name: '', ingredients: '' });
             
             // États pour Jow
@@ -179,8 +471,6 @@
                         fetchShoppingList(),
                         fetchFrequentItems(),
                         fetchRecipes(),
-                        fetchPriceAlerts(),
-                        fetchPromotions(),
                         fetchStats()
                     ]);
                 } catch (error) {
@@ -190,7 +480,7 @@
                 }
             };
             
-            // Fonctions API existantes
+            // Fonctions API
             const fetchShoppingList = async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/shopping-list`);
@@ -221,26 +511,6 @@
                 }
             };
             
-            const fetchPriceAlerts = async () => {
-                try {
-                    const response = await fetch(`${API_BASE}/api/price-alerts`);
-                    const data = await response.json();
-                    setPriceAlerts(data);
-                } catch (error) {
-                    console.error('Erreur chargement alertes:', error);
-                }
-            };
-            
-            const fetchPromotions = async () => {
-                try {
-                    const response = await fetch(`${API_BASE}/api/promotions`);
-                    const data = await response.json();
-                    setPromotions(data);
-                } catch (error) {
-                    console.error('Erreur chargement promotions:', error);
-                }
-            };
-            
             const fetchStats = async () => {
                 try {
                     const response = await fetch(`${API_BASE}/api/stats`);
@@ -250,8 +520,6 @@
                     console.error('Erreur chargement stats:', error);
                 }
             };
-            
-            // === NOUVELLES FONCTIONS JOW ===
             
             // Recherche de recettes Jow RÉELLE
             const searchJowRecipes = async () => {
@@ -270,40 +538,16 @@
                     const data = await response.json();
                     if (data.success) {
                         setJowRecipes(data.data.recipes);
-                        showToast(`${data.data.recipes.length} recettes trouvées sur Jow`, 'success');
+                        showToast(`${data.data.recipes.length} recettes trouvées via scraping réel!`, 'success');
                     } else {
-                        showToast('Erreur lors de la recherche Jow: ' + data.error, 'error');
+                        showToast('Erreur lors de la recherche: ' + data.error, 'error');
                     }
                 } catch (error) {
-                    showToast('Erreur de connexion à Jow', 'error');
+                    showToast('Erreur de connexion lors du scraping', 'error');
                     console.error('Erreur recherche Jow:', error);
                 } finally {
                     setLoadingJow(false);
                 }
-            };
-            
-            // Mise à jour quantité ingrédient Jow
-            const updateJowIngredientQuantity = (recipeId, ingredientIndex, newQuantity) => {
-                setJowRecipes(prev => prev.map(recipe => 
-                    recipe.id === recipeId ? {
-                        ...recipe,
-                        ingredients: recipe.ingredients.map((ing, idx) => 
-                            idx === ingredientIndex ? { ...ing, quantity: parseFloat(newQuantity) || 0 } : ing
-                        )
-                    } : recipe
-                ));
-            };
-            
-            // Mise à jour unité ingrédient Jow
-            const updateJowIngredientUnit = (recipeId, ingredientIndex, newUnit) => {
-                setJowRecipes(prev => prev.map(recipe => 
-                    recipe.id === recipeId ? {
-                        ...recipe,
-                        ingredients: recipe.ingredients.map((ing, idx) => 
-                            idx === ingredientIndex ? { ...ing, unit: newUnit } : ing
-                        )
-                    } : recipe
-                ));
             };
             
             // Ajouter recette Jow avec consolidation intelligente
@@ -311,33 +555,28 @@
                 try {
                     setLoading(true);
                     
-                    // Appeler l'API de consolidation intelligente
                     const response = await fetch(`${API_BASE}/api/intelligent/consolidate-and-add`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            recipe: recipe,
-                            existingList: shoppingList
-                        })
+                        body: JSON.stringify({ recipe: recipe })
                     });
                     
                     const result = await response.json();
                     
                     if (result.success) {
-                        // Actualiser la liste de courses
                         await fetchShoppingList();
                         
-                        const consolidatedCount = result.data.consolidatedItems || 0;
-                        const addedCount = result.data.addedItems || 0;
+                        const consolidatedCount = result.data.consolidated_count || 0;
+                        const createdCount = result.data.created_count || 0;
                         
                         if (consolidatedCount > 0) {
                             showToast(
-                                `Recette "${recipe.name}" ajoutée avec ${consolidatedCount} consolidations intelligentes!`,
+                                `✨ "${recipe.name}" ajoutée avec ${consolidatedCount} consolidations intelligentes!`,
                                 'success'
                             );
                         } else {
                             showToast(
-                                `Recette "${recipe.name}" ajoutée (${addedCount} ingrédients)`,
+                                `✅ "${recipe.name}" ajoutée (${createdCount} ingrédients)`,
                                 'success'
                             );
                         }
@@ -352,43 +591,56 @@
                 }
             };
             
-            // Gestion de la liste de courses (fonctions modifiées)
-            const addItem = async (name, category = newCategory, quantity = 1) => { // MODIFIÉ pour gérer quantité
-                if (!name.trim()) return;
+            // Gestion de la liste de courses
+            const addItem = async () => {
+                if (!newItem.trim()) return;
                 
                 try {
                     const response = await fetch(`${API_BASE}/api/shopping-list`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ 
-                            name: name.trim(), 
-                            category,
-                            quantity: quantity || 1  // AJOUTÉ
+                            name: newItem.trim(), 
+                            category: newCategory,
+                            quantity: newQuantity,
+                            unit: newUnit
                         }),
                     });
                     
-                    if (response.ok) {
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
                         await fetchShoppingList();
                         await fetchFrequentItems();
                         setNewItem('');
-                        setNewQuantity(1); // AJOUTÉ pour reset quantité
-                        showToast(`Article ajouté${quantity > 1 ? ` (${quantity})` : ''}`, 'success');
+                        setNewQuantity(1);
+                        setNewUnit('unité');
+                        
+                        if (result.action === 'consolidated') {
+                            showToast(`🔄 Consolidé: ${result.message}`, 'success');
+                        } else {
+                            showToast(`✅ Article ajouté: ${newItem} (${newQuantity} ${newUnit})`, 'success');
+                        }
+                    } else {
+                        showToast(result.error || 'Erreur lors de l\'ajout', 'error');
                     }
                 } catch (error) {
                     showToast('Erreur lors de l\'ajout', 'error');
                 }
             };
             
-            // NOUVELLE FONCTION pour modifier les quantités
-            const updateItemQuantity = async (itemId, newQuantity) => {
+            const updateItem = async (itemId, updates) => {
                 try {
                     await fetch(`${API_BASE}/api/shopping-list/${itemId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ quantity: newQuantity })
+                        body: JSON.stringify(updates)
                     });
                     await fetchShoppingList();
-                    showToast(`Quantité mise à jour`, 'success');
+                    
+                    if (updates.quantity) {
+                        showToast(`📦 Quantité mise à jour: ${updates.quantity} ${updates.unit || ''}`, 'info');
+                    }
                 } catch (error) {
                     showToast('Erreur lors de la mise à jour', 'error');
                 }
@@ -413,13 +665,13 @@
                         method: 'DELETE',
                     });
                     await fetchShoppingList();
-                    showToast('Article supprimé', 'success');
+                    showToast('🗑️ Article supprimé', 'info');
                 } catch (error) {
                     showToast('Erreur lors de la suppression', 'error');
                 }
             };
             
-            // Gestion des recettes (fonctions existantes)
+            // Gestion des recettes
             const addRecipe = async () => {
                 if (!newRecipe.name.trim() || !newRecipe.ingredients.trim()) return;
                 
@@ -438,7 +690,7 @@
                     if (response.ok) {
                         await fetchRecipes();
                         setNewRecipe({ name: '', ingredients: '' });
-                        showToast('Recette ajoutée avec succès', 'success');
+                        showToast('✅ Recette ajoutée avec succès', 'success');
                     }
                 } catch (error) {
                     showToast('Erreur lors de l\'ajout de la recette', 'error');
@@ -454,68 +706,15 @@
                     if (response.ok) {
                         const result = await response.json();
                         await fetchShoppingList();
-                        showToast(`${result.added_count} ingrédients ajoutés pour "${result.recipe_name}"`, 'success');
+                        
+                        if (result.consolidated_count > 0) {
+                            showToast(`🔄 "${result.recipe_name}" ajoutée avec ${result.consolidated_count} consolidations!`, 'success');
+                        } else {
+                            showToast(`✅ "${result.recipe_name}" ajoutée (${result.created_count} ingrédients)`, 'success');
+                        }
                     }
                 } catch (error) {
                     showToast('Erreur lors de l\'ajout des ingrédients', 'error');
-                }
-            };
-            
-            // Autres fonctions existantes...
-            const checkPrices = async () => {
-                setLoading(true);
-                try {
-                    const response = await fetch(`${API_BASE}/api/check-prices`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ notify: true }),
-                    });
-                    
-                    const result = await response.json();
-                    await fetchPriceAlerts();
-                    showToast(`Vérification terminée: ${result.alerts_found} alertes trouvées`, 'info');
-                } catch (error) {
-                    showToast('Erreur lors de la vérification des prix', 'error');
-                } finally {
-                    setLoading(false);
-                }
-            };
-            
-            const checkPromotions = async () => {
-                setLoading(true);
-                try {
-                    const response = await fetch(`${API_BASE}/api/check-promotions`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ notify: true }),
-                    });
-                    
-                    const result = await response.json();
-                    await fetchPromotions();
-                    showToast(`Vérification terminée: ${result.promotions_found} promotions trouvées`, 'info');
-                } catch (error) {
-                    showToast('Erreur lors de la vérification des promotions', 'error');
-                } finally {
-                    setLoading(false);
-                }
-            };
-            
-            const sendTestEmail = async () => {
-                setLoading(true);
-                try {
-                    const response = await fetch(`${API_BASE}/api/send-test-email`, {
-                        method: 'POST',
-                    });
-                    
-                    if (response.ok) {
-                        showToast('Email de test envoyé avec succès', 'success');
-                    } else {
-                        showToast('Erreur lors de l\'envoi de l\'email', 'error');
-                    }
-                } catch (error) {
-                    showToast('Erreur lors de l\'envoi de l\'email', 'error');
-                } finally {
-                    setLoading(false);
                 }
             };
             
@@ -523,14 +722,6 @@
             const categories = [
                 'Fruits et légumes', 'Viandes et poissons', 'Produits laitiers',
                 'Boulangerie', 'Épicerie', 'Surgelés', 'Boissons', 'Hygiène', 'Divers'
-            ];
-            
-            // Unités disponibles pour Jow
-            const availableUnits = [
-                'g', 'kg', 'ml', 'l', 'cl', 'dl',
-                'unité', 'pièce', 'tranche', 'gousse',
-                'cuillère à soupe', 'cuillère à café',
-                'tasse', 'verre', 'pincée'
             ];
             
             // Rendu de l'interface
@@ -554,10 +745,10 @@
                                         <i className="fas fa-shopping-cart text-white text-xl"></i>
                                     </div>
                                     <div className="ml-4">
-                                        <h1 className="text-2xl font-bold text-gray-900">Smart Shopping</h1>
+                                        <h1 className="text-2xl font-bold text-gray-900">Smart Shopping v2.0</h1>
                                         <p className="text-sm text-gray-500 flex items-center">
-                                            <span className="w-2 h-2 bg-green-400 rounded-full pulse-dot mr-2"></span>
-                                            Raspberry Pi • En ligne
+                                            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></span>
+                                            Raspberry Pi • Scraping Réel • Quantités Intelligentes
                                         </p>
                                     </div>
                                 </div>
@@ -577,12 +768,14 @@
                                             <div className="text-xs text-gray-500">À acheter</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-lg font-bold text-green-600">{stats.active_promotions || 0}</div>
-                                            <div className="text-xs text-gray-500">Promos</div>
+                                            <div className="text-lg font-bold text-purple-600">{stats.recipes || 0}</div>
+                                            <div className="text-xs text-gray-500">Recettes</div>
                                         </div>
                                         <div className="text-center">
-                                            <div className="text-lg font-bold text-red-600">{stats.price_alerts || 0}</div>
-                                            <div className="text-xs text-gray-500">Alertes</div>
+                                            <div className="text-lg font-bold text-green-600">
+                                                {stats.cache_status === 'enabled' ? '⚡' : '🔄'}
+                                            </div>
+                                            <div className="text-xs text-gray-500">Cache</div>
                                         </div>
                                     </div>
                                 </div>
@@ -597,7 +790,6 @@
                                 {[
                                     { id: 'shopping', icon: 'fas fa-list', label: 'Liste de courses' },
                                     { id: 'recipes', icon: 'fas fa-utensils', label: 'Recettes' },
-                                    { id: 'prices', icon: 'fas fa-tags', label: 'Prix & Promos' },
                                     { id: 'settings', icon: 'fas fa-cog', label: 'Paramètres' }
                                 ].map(tab => (
                                     <button
@@ -624,55 +816,51 @@
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                                 {/* Ajout d'articles */}
                                 <div className="lg:col-span-2 space-y-6">
-                                    <div className="bg-white rounded-xl shadow-lg p-6 slide-in">
+                                    <div className="bg-white rounded-xl shadow-lg p-6">
                                         <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
                                             <i className="fas fa-plus-circle text-blue-500 mr-2"></i>
                                             Ajouter un article
                                         </h2>
                                         
-                                        {/* FORMULAIRE MODIFIÉ AVEC QUANTITÉ */}
-                                        <div className="flex flex-col sm:flex-row gap-3">
-                                            <div className="flex-1">
+                                        <div className="space-y-4">
+                                            <div className="flex flex-col sm:flex-row gap-3">
                                                 <input
                                                     type="text"
                                                     value={newItem}
                                                     onChange={(e) => setNewItem(e.target.value)}
                                                     placeholder="Nom de l'article..."
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                                    onKeyPress={(e) => e.key === 'Enter' && addItem(newItem, newCategory, newQuantity)}
+                                                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                    onKeyPress={(e) => e.key === 'Enter' && addItem()}
                                                 />
+                                                
+                                                <select
+                                                    value={newCategory}
+                                                    onChange={(e) => setNewCategory(e.target.value)}
+                                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                                >
+                                                    {categories.map(cat => (
+                                                        <option key={cat} value={cat}>{cat}</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                             
-                                            {/* NOUVEAU - Input quantité */}
-                                            <div className="w-20">
-                                                <input
-                                                    type="number"
-                                                    value={newQuantity}
-                                                    onChange={(e) => setNewQuantity(parseInt(e.target.value) || 1)}
-                                                    min="1"
-                                                    placeholder="Qté"
-                                                    className="w-full px-2 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
+                                            <div className="flex items-center gap-3">
+                                                <QuantitySelector
+                                                    quantity={newQuantity}
+                                                    unit={newUnit}
+                                                    onQuantityChange={setNewQuantity}
+                                                    onUnitChange={setNewUnit}
                                                 />
+                                                
+                                                <button
+                                                    onClick={addItem}
+                                                    disabled={!newItem.trim()}
+                                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
+                                                >
+                                                    <i className="fas fa-plus mr-1"></i>
+                                                    Ajouter
+                                                </button>
                                             </div>
-                                            
-                                            <select
-                                                value={newCategory}
-                                                onChange={(e) => setNewCategory(e.target.value)}
-                                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                            >
-                                                {categories.map(cat => (
-                                                    <option key={cat} value={cat}>{cat}</option>
-                                                ))}
-                                            </select>
-                                            
-                                            <button
-                                                onClick={() => addItem(newItem, newCategory, newQuantity)}
-                                                disabled={!newItem.trim()}
-                                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
-                                            >
-                                                <i className="fas fa-plus mr-1"></i>
-                                                Ajouter
-                                            </button>
                                         </div>
                                     </div>
                                     
@@ -692,59 +880,16 @@
                                                 <p className="text-sm text-gray-400">Ajoutez des articles ci-dessus</p>
                                             </div>
                                         ) : (
-                                            <div className="space-y-2">
-                                                {/* Articles non cochés - AFFICHAGE MODIFIÉ AVEC QUANTITÉS */}
+                                            <div className="space-y-3">
+                                                {/* Articles non cochés */}
                                                 {shoppingList.filter(item => !item.checked).map(item => (
-                                                    <div key={item.id} className="flex items-center p-3 bg-gray-50 rounded-lg hover-lift">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={item.checked}
-                                                            onChange={(e) => toggleItem(item.id, e.target.checked)}
-                                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                                                        />
-                                                        <div className="ml-3 flex-1">
-                                                            {/* NOUVEAU - Affichage avec quantités et badges */}
-                                                            <div className="flex items-center">
-                                                                <span className="font-medium text-gray-900">{item.name}</span>
-                                                                {item.quantity > 1 && (
-                                                                    <span className="ml-2 bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                                                        {item.quantity}
-                                                                    </span>
-                                                                )}
-                                                                {/* Badge consolidé si c'est un article de recette avec quantité > 3 */}
-                                                                {item.category === 'Recettes' && item.quantity > 3 && (
-                                                                    <span className="ml-2 consolidated-badge text-white text-xs px-2 py-1 rounded-full">
-                                                                        CONSOLIDÉ
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <div className="text-sm text-gray-500">{item.category}</div>
-                                                        </div>
-                                                        
-                                                        {/* NOUVEAU - Contrôles de quantité */}
-                                                        <div className="flex items-center mx-3">
-                                                            <button
-                                                                onClick={() => updateItemQuantity(item.id, Math.max(1, item.quantity - 1))}
-                                                                className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-sm"
-                                                            >
-                                                                -
-                                                            </button>
-                                                            <span className="mx-2 text-sm font-medium w-8 text-center">{item.quantity || 1}</span>
-                                                            <button
-                                                                onClick={() => updateItemQuantity(item.id, item.quantity + 1)}
-                                                                className="w-6 h-6 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full text-sm"
-                                                            >
-                                                                +
-                                                            </button>
-                                                        </div>
-                                                        
-                                                        <button
-                                                            onClick={() => removeItem(item.id)}
-                                                            className="text-red-500 hover:text-red-700 p-1"
-                                                        >
-                                                            <i className="fas fa-trash"></i>
-                                                        </button>
-                                                    </div>
+                                                    <ShoppingListItem
+                                                        key={item.id}
+                                                        item={item}
+                                                        onUpdate={updateItem}
+                                                        onRemove={removeItem}
+                                                        onToggle={toggleItem}
+                                                    />
                                                 ))}
                                                 
                                                 {/* Articles cochés */}
@@ -752,31 +897,13 @@
                                                     <div className="pt-4 border-t border-gray-200">
                                                         <h3 className="text-sm font-medium text-gray-500 mb-2">Articles achetés</h3>
                                                         {shoppingList.filter(item => item.checked).map(item => (
-                                                            <div key={item.id} className="flex items-center p-3 bg-green-50 rounded-lg opacity-75">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={item.checked}
-                                                                    onChange={(e) => toggleItem(item.id, e.target.checked)}
-                                                                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                                                                />
-                                                                <div className="ml-3 flex-1">
-                                                                    <div className="font-medium text-gray-700 line-through flex items-center">
-                                                                        {item.name}
-                                                                        {item.quantity > 1 && (
-                                                                            <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                                                                                {item.quantity}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-500">{item.category}</div>
-                                                                </div>
-                                                                <button
-                                                                    onClick={() => removeItem(item.id)}
-                                                                    className="text-red-500 hover:text-red-700 p-1"
-                                                                >
-                                                                    <i className="fas fa-trash"></i>
-                                                                </button>
-                                                            </div>
+                                                            <ShoppingListItem
+                                                                key={item.id}
+                                                                item={item}
+                                                                onUpdate={updateItem}
+                                                                onRemove={removeItem}
+                                                                onToggle={toggleItem}
+                                                            />
                                                         ))}
                                                     </div>
                                                 )}
@@ -800,7 +927,10 @@
                                                 {frequentItems.slice(0, 5).map(item => (
                                                     <button
                                                         key={item.name}
-                                                        onClick={() => addItem(item.name, item.category)}
+                                                        onClick={() => {
+                                                            setNewItem(item.name);
+                                                            setNewCategory(item.category);
+                                                        }}
                                                         className="w-full text-left p-3 bg-yellow-50 hover:bg-yellow-100 rounded-lg transition-colors"
                                                     >
                                                         <div className="font-medium text-gray-900">{item.name}</div>
@@ -811,30 +941,6 @@
                                                 ))}
                                             </div>
                                         )}
-                                    </div>
-                                    
-                                    {/* Actions rapides */}
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions rapides</h3>
-                                        <div className="space-y-3">
-                                            <button
-                                                onClick={checkPrices}
-                                                disabled={loading}
-                                                className="w-full flex items-center justify-center px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-300 transition-colors"
-                                            >
-                                                <i className={`fas fa-search mr-2 ${loading ? 'animate-spin' : ''}`}></i>
-                                                Vérifier les prix
-                                            </button>
-                                            
-                                            <button
-                                                onClick={checkPromotions}
-                                                disabled={loading}
-                                                className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-300 transition-colors"
-                                            >
-                                                <i className={`fas fa-percentage mr-2 ${loading ? 'animate-spin' : ''}`}></i>
-                                                Vérifier les promos
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -859,7 +965,7 @@
                                         ) : (
                                             <div className="space-y-4">
                                                 {recipes.map(recipe => (
-                                                    <div key={recipe.id} className="border border-gray-200 rounded-lg p-4 hover-lift">
+                                                    <div key={recipe.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                                                         <div className="flex justify-between items-start mb-2">
                                                             <h3 className="font-medium text-gray-900">{recipe.name}</h3>
                                                             <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
@@ -890,129 +996,12 @@
                                                             className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
                                                         >
                                                             <i className="fas fa-cart-plus mr-2"></i>
-                                                            Ajouter à la liste
+                                                            Ajouter avec consolidation
                                                         </button>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
-                                    </div>
-                                </div>
-                                
-                                {/* Section Jow + Ajouter une recette */}
-                                <div className="space-y-6">
-                                    {/* RECETTES JOW INTÉGRÉES */}
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                                            <i className="fas fa-globe text-purple-500 mr-2"></i>
-                                            Recettes Jow
-                                        </h3>
-                                        
-                                        {/* Recherche Jow */}
-                                        <div className="mb-4">
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Rechercher sur Jow..."
-                                                    value={jowSearchQuery}
-                                                    onChange={(e) => setJowSearchQuery(e.target.value)}
-                                                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                                                    onKeyPress={(e) => e.key === 'Enter' && searchJowRecipes()}
-                                                />
-                                                <button
-                                                    onClick={searchJowRecipes}
-                                                    disabled={loadingJow || !jowSearchQuery.trim()}
-                                                    className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors"
-                                                >
-                                                    {loadingJow ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-search"></i>}
-                                                </button>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Résultats Jow */}
-                                        <div className="space-y-4 max-h-96 overflow-y-auto">
-                                            {jowRecipes.map(recipe => (
-                                                <div key={recipe.id} className="border border-purple-200 rounded-lg p-4 bg-purple-50">
-                                                    <div className="flex justify-between items-start mb-3">
-                                                        <div>
-                                                            <h4 className="font-semibold text-gray-900">{recipe.name}</h4>
-                                                            <p className="text-sm text-gray-600">
-                                                                🍽️ {recipe.servings} portions • ⏱️ {recipe.prepTime} min
-                                                            </p>
-                                                        </div>
-                                                        <span className="text-xs bg-purple-600 text-white px-2 py-1 rounded">
-                                                            Jow
-                                                        </span>
-                                                    </div>
-                                                    
-                                                    {/* Ingrédients avec quantités ajustables */}
-                                                    <div className="mb-4">
-                                                        <p className="text-sm font-medium text-gray-700 mb-2">
-                                                            Ingrédients (modifiables) :
-                                                        </p>
-                                                        <div className="space-y-2">
-                                                            {recipe.ingredients.map((ingredient, idx) => (
-                                                                <div key={idx} className="jow-ingredient-item flex items-center justify-between py-2 px-3 bg-white rounded border">
-                                                                    <span className="text-sm text-gray-700 flex-1">{ingredient.name}</span>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <input
-                                                                            type="number"
-                                                                            value={ingredient.quantity}
-                                                                            onChange={(e) => updateJowIngredientQuantity(recipe.id, idx, e.target.value)}
-                                                                            className="quantity-input p-1 border border-gray-300 rounded text-center text-sm"
-                                                                            step="0.1"
-                                                                            min="0"
-                                                                        />
-                                                                        <select
-                                                                            value={ingredient.unit}
-                                                                            onChange={(e) => updateJowIngredientUnit(recipe.id, idx, e.target.value)}
-                                                                            className="unit-select p-1 border border-gray-300 rounded text-xs"
-                                                                        >
-                                                                            {availableUnits.map(unit => (
-                                                                                <option key={unit} value={unit}>{unit}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    <button
-                                                        onClick={() => addJowRecipeToList(recipe)}
-                                                        disabled={loading}
-                                                        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors font-medium"
-                                                    >
-                                                        {loading ? (
-                                                            <><i className="fas fa-spinner fa-spin mr-2"></i>Ajout en cours...</>
-                                                        ) : (
-                                                            <><i className="fas fa-magic mr-2"></i>Ajouter avec consolidation intelligente</>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            ))}
-                                            
-                                            {jowRecipes.length === 0 && !loadingJow && jowSearchQuery && (
-                                                <p className="text-gray-500 text-center py-4">
-                                                    Aucune recette trouvée pour "{jowSearchQuery}"
-                                                </p>
-                                            )}
-                                            
-                                            {jowRecipes.length === 0 && !loadingJow && !jowSearchQuery && (
-                                                <div className="text-center py-8">
-                                                    <i className="fas fa-search text-3xl text-gray-300 mb-3"></i>
-                                                    <p className="text-gray-500">Recherchez des recettes Jow</p>
-                                                    <p className="text-sm text-gray-400">Ex: "pâtes", "poulet", "salade"...</p>
-                                                </div>
-                                            )}
-                                            
-                                            {loadingJow && (
-                                                <div className="text-center py-8">
-                                                    <i className="fas fa-spinner fa-spin text-2xl text-purple-600 mb-3"></i>
-                                                    <p className="text-gray-600">Recherche sur Jow en cours...</p>
-                                                </div>
-                                            )}
-                                        </div>
                                     </div>
                                     
                                     {/* Ajouter une recette personnalisée */}
@@ -1060,103 +1049,79 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                        
-                        {/* Onglet Prix & Promotions */}
-                        {activeTab === 'prices' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                {/* Alertes de prix */}
-                                <div className="space-y-6">
-                                    <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                            <i className="fas fa-exclamation-triangle text-red-500 mr-2"></i>
-                                            Alertes de prix Amazon
-                                        </h2>
-                                        
-                                        {priceAlerts.length === 0 ? (
-                                            <div className="text-center py-8">
-                                                <i className="fas fa-shield-alt text-4xl text-gray-300 mb-3"></i>
-                                                <p className="text-gray-500">Aucune alerte pour le moment</p>
-                                                <p className="text-sm text-gray-400">Les erreurs de prix seront détectées automatiquement</p>
-                                            </div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {priceAlerts.slice(0, 5).map(alert => (
-                                                    <div key={alert.id} className="border-l-4 border-red-500 bg-red-50 p-4 rounded-r-lg">
-                                                        <div className="flex justify-between items-start">
-                                                            <div className="flex-1">
-                                                                <h3 className="font-medium text-gray-900">{alert.product_name}</h3>
-                                                                <p className="text-sm text-gray-600 mt-1">{alert.store}</p>
-                                                                <div className="flex items-center mt-2 space-x-4">
-                                                                    <span className="text-sm text-gray-500 line-through">
-                                                                        {alert.original_price}€
-                                                                    </span>
-                                                                    <span className="text-lg font-bold text-red-600">
-                                                                        {alert.current_price}€
-                                                                    </span>
-                                                                    <span className="text-sm bg-red-100 text-red-800 px-2 py-1 rounded">
-                                                                        -{alert.discount_percentage}%
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                            <span className="text-xs text-gray-500">
-                                                                {new Date(alert.created_at).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
                                 
-                                {/* Promotions locales */}
+                                {/* Section Jow + Marmiton */}
                                 <div className="space-y-6">
                                     <div className="bg-white rounded-xl shadow-lg p-6">
-                                        <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                            <i className="fas fa-percentage text-green-500 mr-2"></i>
-                                            Promotions locales
-                                        </h2>
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                            <i className="fas fa-globe text-purple-500 mr-2"></i>
+                                            Recettes Jow.fr & Marmiton.org
+                                            <span className="ml-2 text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
+                                                SCRAPING RÉEL
+                                            </span>
+                                        </h3>
                                         
-                                        {promotions.length === 0 ? (
-                                            <div className="text-center py-8">
-                                                <i className="fas fa-tag text-4xl text-gray-300 mb-3"></i>
-                                                <p className="text-gray-500">Aucune promotion pour le moment</p>
-                                                <p className="text-sm text-gray-400">Vérifications automatiques quotidiennes</p>
+                                        {/* Recherche */}
+                                        <div className="mb-4">
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Recherche réelle sur Jow et Marmiton..."
+                                                    value={jowSearchQuery}
+                                                    onChange={(e) => setJowSearchQuery(e.target.value)}
+                                                    className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                                                    onKeyPress={(e) => e.key === 'Enter' && searchJowRecipes()}
+                                                />
+                                                <button
+                                                    onClick={searchJowRecipes}
+                                                    disabled={loadingJow || !jowSearchQuery.trim()}
+                                                    className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 transition-colors"
+                                                >
+                                                    {loadingJow ? 
+                                                        <i className="fas fa-spinner fa-spin"></i> : 
+                                                        <i className="fas fa-search"></i>
+                                                    }
+                                                </button>
                                             </div>
-                                        ) : (
-                                            <div className="space-y-4">
-                                                {promotions.slice(0, 8).map(promo => (
-                                                    <div key={promo.id} className="border border-gray-200 rounded-lg p-4 hover-lift">
-                                                        <div className="flex justify-between items-start mb-2">
-                                                            <h3 className="font-medium text-gray-900">{promo.product_name}</h3>
-                                                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                                {promo.store}
-                                                            </span>
-                                                        </div>
-                                                        
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center space-x-2">
-                                                                <span className="text-sm text-gray-500 line-through">
-                                                                    {promo.original_price}€
-                                                                </span>
-                                                                <span className="font-bold text-green-600">
-                                                                    {promo.promo_price}€
-                                                                </span>
-                                                                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                                                                    -{promo.discount_percentage}%
-                                                                </span>
-                                                            </div>
-                                                            
-                                                            <span className="text-xs text-gray-500">
-                                                                Jusqu'au {new Date(promo.valid_until).toLocaleDateString()}
-                                                            </span>
-                                                        </div>
+                                        </div>
+                                        
+                                        {/* Résultats */}
+                                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                                            {jowRecipes.map(recipe => (
+                                                <JowRecipeCard
+                                                    key={recipe.id}
+                                                    recipe={recipe}
+                                                    onAddToList={addJowRecipeToList}
+                                                    loading={loading}
+                                                />
+                                            ))}
+                                            
+                                            {jowRecipes.length === 0 && !loadingJow && jowSearchQuery && (
+                                                <p className="text-gray-500 text-center py-4">
+                                                    Aucune recette trouvée pour "{jowSearchQuery}"
+                                                </p>
+                                            )}
+                                            
+                                            {jowRecipes.length === 0 && !loadingJow && !jowSearchQuery && (
+                                                <div className="text-center py-8">
+                                                    <i className="fas fa-search text-3xl text-gray-300 mb-3"></i>
+                                                    <p className="text-gray-500">Recherchez des recettes en temps réel</p>
+                                                    <p className="text-sm text-gray-400">Ex: "pâtes", "poulet", "salade"...</p>
+                                                    <div className="mt-2 text-xs text-purple-600">
+                                                        🔥 Scraping direct sur jow.fr et marmiton.org
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                </div>
+                                            )}
+                                            
+                                            {loadingJow && (
+                                                <div className="text-center py-8">
+                                                    <div className="loading-skeleton w-full h-4 rounded mb-2"></div>
+                                                    <div className="loading-skeleton w-3/4 h-4 rounded mb-2"></div>
+                                                    <div className="loading-skeleton w-1/2 h-4 rounded"></div>
+                                                    <p className="text-gray-600 mt-4">Scraping en cours sur Jow et Marmiton...</p>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1168,174 +1133,85 @@
                                 <div className="bg-white rounded-xl shadow-lg p-6">
                                     <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
                                         <i className="fas fa-cog text-gray-500 mr-2"></i>
-                                        Paramètres et configuration
+                                        Paramètres et informations
                                     </h2>
                                     
-                                    {/* Informations système */}
                                     <div className="space-y-6">
+                                        <div>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-3">Nouvelles fonctionnalités v2.0</h3>
+                                            <div className="bg-green-50 rounded-lg p-4 space-y-2">
+                                                <div className="flex items-center">
+                                                    <i className="fas fa-check-circle text-green-600 mr-2"></i>
+                                                    <span className="text-green-800">✅ Scraping RÉEL sur jow.fr et marmiton.org</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <i className="fas fa-check-circle text-green-600 mr-2"></i>
+                                                    <span className="text-green-800">✅ Gestion intelligente des quantités (pas de doublons)</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <i className="fas fa-check-circle text-green-600 mr-2"></i>
+                                                    <span className="text-green-800">✅ Consolidation automatique des ingrédients similaires</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <i className="fas fa-check-circle text-green-600 mr-2"></i>
+                                                    <span className="text-green-800">✅ Interface style Jow avec sélecteurs de quantité</span>
+                                                </div>
+                                                <div className="flex items-center">
+                                                    <i className="fas fa-check-circle text-green-600 mr-2"></i>
+                                                    <span className="text-green-800">✅ Cache Redis pour optimiser les performances</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
                                         <div>
                                             <h3 className="text-lg font-medium text-gray-900 mb-3">Informations système</h3>
                                             <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Version:</span>
+                                                    <span className="font-medium">Smart Shopping v2.0 Corrigé</span>
+                                                </div>
                                                 <div className="flex justify-between">
                                                     <span className="text-gray-600">Plateforme:</span>
                                                     <span className="font-medium">Raspberry Pi Ubuntu Server</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">Service:</span>
-                                                    <span className="font-medium text-green-600">
-                                                        <i className="fas fa-circle text-xs mr-1"></i>
-                                                        En ligne
-                                                    </span>
-                                                </div>
-                                                <div className="flex justify-between">
                                                     <span className="text-gray-600">Base de données:</span>
-                                                    <span className="font-medium">SQLite</span>
+                                                    <span className="font-medium">SQLite avec optimisations</span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">Articles en liste:</span>
-                                                    <span className="font-medium">{stats.shopping_list_items || 0}</span>
+                                                    <span className="text-gray-600">Cache:</span>
+                                                    <span className={`font-medium ${stats.cache_status === 'enabled' ? 'text-green-600' : 'text-orange-600'}`}>
+                                                        {stats.cache_status === 'enabled' ? '⚡ Redis activé' : '🔄 Désactivé'}
+                                                    </span>
                                                 </div>
                                                 <div className="flex justify-between">
-                                                    <span className="text-gray-600">Recettes Jow:</span>
-                                                    <span className="font-medium text-purple-600">
-                                                        <i className="fas fa-globe mr-1"></i>
-                                                        Connecté
-                                                    </span>
+                                                    <span className="text-gray-600">Sources scraping:</span>
+                                                    <span className="font-medium text-purple-600">🌐 jow.fr + marmiton.org</span>
                                                 </div>
                                             </div>
                                         </div>
                                         
-                                        {/* Configuration email */}
                                         <div>
-                                            <h3 className="text-lg font-medium text-gray-900 mb-3">Notifications email</h3>
-                                            <div className="space-y-3">
-                                                <p className="text-sm text-gray-600">
-                                                    Les notifications sont envoyées à: <strong>rapherv@gmail.com</strong>
-                                                </p>
-                                                
-                                                <button
-                                                    onClick={sendTestEmail}
-                                                    disabled={loading}
-                                                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300 transition-colors"
-                                                >
-                                                    <i className={`fas fa-envelope mr-2 ${loading ? 'animate-spin' : ''}`}></i>
-                                                    Envoyer un email de test
-                                                </button>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Vérifications automatiques */}
-                                        <div>
-                                            <h3 className="text-lg font-medium text-gray-900 mb-3">Vérifications automatiques</h3>
-                                            <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600">Prix Amazon:</span>
-                                                    <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                        Toutes les 2 heures
-                                                    </span>
+                                            <h3 className="text-lg font-medium text-gray-900 mb-3">Statistiques</h3>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="bg-blue-50 p-4 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-blue-600">{stats.shopping_list_items || 0}</div>
+                                                    <div className="text-sm text-blue-800">Articles en liste</div>
                                                 </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600">Promotions locales:</span>
-                                                    <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
-                                                        Quotidienne à 8h
-                                                    </span>
+                                                <div className="bg-green-50 p-4 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-green-600">{stats.recipes || 0}</div>
+                                                    <div className="text-sm text-green-800">Recettes sauvées</div>
                                                 </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600">Sync Jow:</span>
-                                                    <span className="text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">
-                                                        En temps réel
-                                                    </span>
+                                                <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-yellow-600">{stats.frequent_items || 0}</div>
+                                                    <div className="text-sm text-yellow-800">Suggestions intelligentes</div>
                                                 </div>
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-gray-600">Nettoyage base:</span>
-                                                    <span className="text-sm bg-gray-100 text-gray-800 px-2 py-1 rounded">
-                                                        Dimanche à 2h
-                                                    </span>
+                                                <div className="bg-purple-50 p-4 rounded-lg text-center">
+                                                    <div className="text-2xl font-bold text-purple-600">
+                                                        {Math.round((stats.database_size || 0) / 1024)} KB
+                                                    </div>
+                                                    <div className="text-sm text-purple-800">Taille base</div>
                                                 </div>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Actions de maintenance */}
-                                        <div>
-                                            <h3 className="text-lg font-medium text-gray-900 mb-3">Maintenance</h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                <button
-                                                    onClick={loadAllData}
-                                                    disabled={loading}
-                                                    className="flex items-center justify-center px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-300 transition-colors"
-                                                >
-                                                    <i className={`fas fa-sync-alt mr-2 ${loading ? 'animate-spin' : ''}`}></i>
-                                                    Actualiser données
-                                                </button>
-                                                
-                                                <button className="flex items-center justify-center px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
-                                                    <i className="fas fa-broom mr-2"></i>
-                                                    Nettoyer anciens
-                                                </button>
-                                                
-                                                <button className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                                                    <i className="fas fa-globe mr-2"></i>
-                                                    Test API Jow
-                                                </button>
-                                                
-                                                <button className="flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                                                    <i className="fas fa-download mr-2"></i>
-                                                    Export données
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Aide et documentation */}
-                                <div className="bg-white rounded-xl shadow-lg p-6">
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Aide et fonctionnalités</h3>
-                                    <div className="space-y-4 text-sm">
-                                        <div className="flex items-start">
-                                            <i className="fas fa-magic text-purple-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Consolidation intelligente Jow</strong> : Détecte automatiquement les doublons d'ingrédients 
-                                                entre recettes et consolide les quantités (ex: 200g + 300g = 500g de pâtes)
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-adjust text-blue-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Quantités ajustables</strong> : Modifiez les quantités et unités directement 
-                                                dans l'interface avant d'ajouter à votre liste
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-globe text-green-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Recherche Jow en temps réel</strong> : Accès direct aux milliers de recettes 
-                                                Jow avec ingrédients et quantités automatiques
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-brain text-yellow-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Suggestions intelligentes</strong> : Le système apprend de vos habitudes 
-                                                et vous propose automatiquement les articles que vous achetez régulièrement
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-tags text-red-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Détection d'erreurs de prix</strong> : Surveillance automatique des réductions 
-                                                supérieures à 90% qui peuvent être des erreurs de prix sur Amazon
-                                            </div>
-                                        </div>
-                                        
-                                        <div className="flex items-start">
-                                            <i className="fas fa-envelope text-purple-500 mt-1 mr-3"></i>
-                                            <div>
-                                                <strong>Notifications email</strong> : Alertes automatiques par email 
-                                                pour les bonnes affaires détectées et promotions locales
                                             </div>
                                         </div>
                                     </div>
@@ -1350,17 +1226,17 @@
                             <div className="flex flex-col md:flex-row justify-between items-center">
                                 <div className="flex items-center text-sm text-gray-500">
                                     <i className="fas fa-heart text-red-500 mr-1"></i>
-                                    Développé avec ❤️ pour optimiser vos courses
+                                    Smart Shopping v2.0 - Scraping Réel & Quantités Intelligentes
                                 </div>
                                 
                                 <div className="flex items-center mt-4 md:mt-0 space-x-4 text-sm text-gray-500">
-                                    <span>Smart Shopping Assistant v2.0</span>
+                                    <span>🔥 Jow.fr + Marmiton.org</span>
                                     <span>•</span>
-                                    <span>Jow Integration</span>
+                                    <span>🧠 IA Consolidation</span>
                                     <span>•</span>
-                                    <span>Raspberry Pi</span>
+                                    <span>⚡ Cache Redis</span>
                                     <span>•</span>
-                                    <span>{new Date().getFullYear()}</span>
+                                    <span>🍓 Raspberry Pi</span>
                                 </div>
                             </div>
                         </div>
@@ -1370,7 +1246,7 @@
         };
         
         // Rendu de l'application
-        ReactDOM.render(<SmartShoppingApp />, document.getElementById('root'));
+        ReactDOM.render(<SmartShoppingAppCorrected />, document.getElementById('root'));
     </script>
 </body>
 </html>
